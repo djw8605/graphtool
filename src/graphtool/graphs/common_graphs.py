@@ -508,7 +508,7 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
 
     super( QualityMap, self ).setup()
 
-    results = self.parsed
+    results = self.parsed_data
     self.try_column = int(dict(results.query.__dict__).pop('try_column',0)) 
     self.done_column = int(dict(results.query.__dict__).pop('done_column',1))
     self.fail_column = int(dict(results.query.__dict__).pop('fail_column',2))
