@@ -426,7 +426,7 @@ class DBGraph( Graph ):
     except:
       self.vars = {}
     self.title = getattr( self, 'title', kw.pop( 'title', results.query.title ) )
-    self.ylabel = kw.pop( 'ylabel', results.query.column_units )
+    self.ylabel = kw.pop( 'ylabel', results.query.column_names + " ["+results.query.column_units+"]" )
     if 'grouping_name' in results.query.__dict__.keys():
       self.xlabel = kw.pop( 'xlabel', results.query.grouping_name )
     self.kind  = results.query.pivot_name
