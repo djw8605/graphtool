@@ -158,10 +158,10 @@ class Graph( object ):
   def make_bottom_text( self ):
     return None
 
-  def sort_keys( self, results ):
-    if self.sorted_keys != None:
+  def sort_keys( self, results, ignore_cache=False ):
+    if self.sorted_keys != None and (not ignore_cache):
       return self.sorted_keys
-    mykeys = list( results.keys() )
+    mykeys = list( results.keys() ); mykeys.sort()
     self.sorted_keys = mykeys
     return mykeys
 

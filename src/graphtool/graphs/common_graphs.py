@@ -504,6 +504,8 @@ class PieGraph( PivotGraph ):
 # TODO this is not generic...
 class QualityMap( TimeGraph, PivotGroupGraph ):
 
+  sort_keys = Graph.sort_keys
+
   def setup( self ):
 
     super( QualityMap, self ).setup()
