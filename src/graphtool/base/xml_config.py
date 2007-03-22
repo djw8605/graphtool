@@ -63,7 +63,7 @@ class XmlConfig( FileConfig ):
       raise Exception( "The XML parser was instructed to parse an object which does not look like a file or a filename; %s" % str(file) )
 
     dom = parse( file )
-    dom = dom.getElementsByTagName('phedex')[0]
+    dom = dom.getElementsByTagName('graphtool-config')[0]
     for import_dom in dom.getElementsByTagName('import'):
       self.parse_import( import_dom )
     for class_dom in dom.getElementsByTagName('class'):
