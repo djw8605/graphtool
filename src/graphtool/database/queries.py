@@ -119,6 +119,7 @@ class SqlQuery( XmlConfig ):
         while sem_count != len(agg):
           sem.acquire()
           sem_count += 1
+      vars['globals'] = self.globals 
       results = function( results, **vars )
       for kw, val in self.__dict__.items(): setattr( results, kw, val ) 
       for kw, val in ctx.__dict__.items(): setattr( results, kw, val ) 

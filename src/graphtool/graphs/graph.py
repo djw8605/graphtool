@@ -33,7 +33,7 @@ prefs = {
   'font' : 'Lucida Grande',
   'font_family' : 'sans-serif',
   'square_axis' : False,
-  'watermark' : '$GRAPH_ROOT/static_content/CMSbwl3.png'
+  'watermark' : '$GRAPHTOOL_ROOT/static_content/CMSbwl3.png'
 }
 
 def draw_empty( text, file, kw ):

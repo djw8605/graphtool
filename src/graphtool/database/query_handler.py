@@ -172,15 +172,21 @@ def adjust_time( mytime, **kw ):
   #print mytime, datetime.datetime.utcfromtimestamp( timestamp )
   return datetime.datetime.utcfromtimestamp( timestamp )
 
-def results_parser( sql_results, pivots="0,1", grouping="2", results="3", pivot_transform="echo", grouping_transform="echo", globals=globals(), suppress_zeros=True, **kw ):
+def results_parser( sql_results, pivots="0,1", grouping="2", results="3", pivot_transform="echo", grouping_transform="echo", globals=globals(), suppress_zeros=True, **kw ): 
     pivot_cols = [int(i.strip()) for i in pivots.split(',')]
     grouping_cols = [int(i.strip()) for i in grouping.split(',')]
     results_cols = [int(i.strip()) for i in results.split(',')]
     len_results_cols = len(results_cols)
     if len(sql_results) > 0:
       row_size = len(sql_results[0])
-    pivot_transform_func = globals[pivot_transform.strip()]
-    grouping_transform_func = globals[grouping_transform.strip()]
+    if pivot_transform == 'echo':
+      pivot_transform_func = echo
+    else:
+      pivot_transform_func = globals[pivot_transform.strip()]
+    if grouping_transform == 'echo':
+      grouping_transform_func = echo
+    else:
+      grouping_transform_func = globals[grouping_transform.strip()]
     parsed_results = {}
     for row in sql_results:
       my_pivot = make_entry( row, pivot_cols, pivot_transform_func, row_size, **kw )
@@ -217,8 +223,14 @@ def cumulative_pivot_group_parser( sql_results, pivots="0,1", grouping="2", resu
     len_results_cols = len(results_cols) 
     if len(sql_results) > 0:
       row_size = len(sql_results[0])
-    pivot_transform_func = globals[pivot_transform.strip()]
-    grouping_transform_func = globals[grouping_transform.strip()]
+    if pivot_transform == 'echo':
+      pivot_transform_func = echo
+    else:
+      pivot_transform_func = globals[pivot_transform.strip()]
+    if grouping_transform == 'echo':
+      grouping_transform_func = echo
+    else:
+      grouping_transform_func = globals[grouping_transform.strip()]
     parsed_results = {}
 
     groups = set()
@@ -307,7 +319,10 @@ def simple_results_parser( sql_results, pivots="0", results="1", pivot_transform
     len_results_cols = len(results_cols)
     if len(sql_results) > 0:
       row_size = len(sql_results[0])
-    pivot_transform_func = globals[pivot_transform.strip()]
+    if pivot_transform == 'echo':
+      pivot_transform_func = echo
+    else:
+      pivot_transform_func = globals[pivot_transform.strip()]
     parsed_results = {}
     for row in sql_results:
       my_pivot = make_entry( row, pivot_cols, pivot_transform_func, row_size, **kw )
@@ -334,7 +349,10 @@ def complex_pivot_parser( sql_results, pivots="0", results="1", pivot_transform=
     len_results_cols = len(results_cols)
     if len(sql_results) > 0:
       row_size = len(sql_results[0])
-    pivot_transform_func = globals[pivot_transform.strip()]
+    if pivot_transform == 'echo':
+      pivot_transform_func = echo
+    else:
+      pivot_transform_func = globals[pivot_transform.strip()]
     parsed_results = []
     for row in sql_results:
       my_pivot = make_entry( row, pivot_cols, pivot_transform_func, row_size, **kw )
