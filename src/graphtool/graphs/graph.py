@@ -15,6 +15,8 @@ from graphtool.tools.cache import Cache
 from graphtool.database.query_handler import QueryHandler
 from matplotlib.dates import date2num
 
+class ExtDict( dict ): pass
+
 cStringIO_type = type(cStringIO.StringIO())
 
 prefs = {
@@ -134,6 +136,7 @@ class Graph( object ):
 
   def __init__( self, *args, **kw ):
     super( Graph, self ).__init__( *args, **kw )
+    self.sorted_keys = None
 
   def run( self, results, file, **kw ):
     self.prefs = dict(prefs)
@@ -155,17 +158,22 @@ class Graph( object ):
   def make_bottom_text( self ):
     return None
 
-  def sort_keys( self, keys ):
-    mykeys = list( keys )
-    mykeys.sort()
+  def sort_keys( self, results ):
+    if self.sorted_keys != None:
+      return self.sorted_keys
+    mykeys = list( results.keys() )
+    self.sorted_keys = mykeys
     return mykeys
 
   def setup( self ):
+    self.colors = self.preset_colors( self.sort_keys( self.parsed_data ) )
     pass
 
   def parse_data( self ):
     self.parsed_data = dict( self.results )
-    pass
+    self.parsed_data = ExtDict( self.results )
+    for key, item in self.results.__dict__.items():
+      setattr( self.parsed_data, key, item )
 
   def draw_empty( self ):
     prefs = self.prefs
@@ -180,6 +188,16 @@ class Graph( object ):
     self.ax = None
     self.fig = fig
     self.canvas = canvas
+
+  hex_colors = [ "#e66266", "#fff8a9", "#7bea81", "#8d4dff", "#ffbc71", "#a57e81",
+                 "#baceac", "#00ccff", "#ccffff", "#ff99cc", "#cc99ff", "#ffcc99",
+                 "#3366ff", "#33cccc" ]
+
+  def preset_colors( self, labels ):
+    size_labels = len( labels )
+    hex_colors = self.hex_colors
+    size_colors = len( hex_colors )
+    return [ hex_colors[ i % size_colors ] for i in range( size_labels ) ]
 
   def prepare_canvas( self ):
     self.bottom_text = self.make_bottom_text()
@@ -434,6 +452,25 @@ class DBGraph( Graph ):
 
 class PivotGroupGraph( Graph ):
 
+  def sort_keys( self, results ):
+    if self.sorted_keys != None: return self.sorted_keys
+    reverse_dict = {}
+    for key, item in results.items():
+      size = self.data_size( item )
+      if size not in reverse_dict:
+        reverse_dict[size] = [key]
+      else:
+        reverse_dict[size].append( key )
+    sorted_dict_keys = reverse_dict.keys(); sorted_dict_keys.sort()
+    sorted_dict_keys.reverse()
+    sorted_keys = []
+    for key in sorted_dict_keys:
+      sorted_keys.extend( reverse_dict[key] )
+    return sorted_keys
+
+  def data_size( self, groups ):
+    return max( groups.values() )
+
   def parse_pivot( self, pivot ):
     return pivot
 
@@ -445,8 +482,10 @@ class PivotGroupGraph( Graph ):
 
   def parse_data( self ):
     super( PivotGroupGraph, self ).parse_data()
-    new_parsed_data = {}
+    new_parsed_data = ExtDict()
     parsed_data = getattr( self, 'parsed_data', self.results )
+    for key, item in parsed_data.__dict__.items():
+      setattr( new_parsed_data, key, item )    
     for pivot, groups in parsed_data.items():
       new_pivot = self.parse_pivot( pivot )
       new_groups = {}
@@ -459,6 +498,24 @@ class PivotGroupGraph( Graph ):
 
 class PivotGraph( Graph ):
 
+  def sort_keys( self, results ):
+    if self.sorted_keys != None: return self.sorted_keys
+    reverse_dict = {}
+    for key, item in results.items():
+      size = self.data_size( item )
+      if size not in reverse_dict:
+        reverse_dict[size] = [key]
+      else:
+        reverse_dict[size].append( key )
+    sorted_dict_keys = reverse_dict.keys(); sorted_dict_keys.sort()
+    sorted_dict_keys.reverse()
+    sorted_keys = []
+    for key in sorted_dict_keys:
+      sorted_keys.extend( reverse_dict[key] )
+    return sorted_keys
+
+  def data_size( self, item ): return abs(item)
+
   def parse_pivot( self, pivot ):
     return pivot
     
@@ -467,8 +524,10 @@ class PivotGraph( Graph ):
     
   def parse_data( self ):
     super( PivotGraph, self ).parse_data()
-    new_parsed_data = {}
+    new_parsed_data = ExtDict()
     parsed_data = getattr( self, 'parsed_data', self.results )
+    for key, item in parsed_data.__dict__.items():
+      setattr( new_parsed_data, key, item ) 
     for pivot, data in parsed_data.items():
       new_pivot = self.parse_pivot( pivot )
       new_parsed_data[ new_pivot ] = self.parse_datum( data )

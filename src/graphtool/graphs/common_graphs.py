@@ -20,7 +20,7 @@ class BarGraph( PivotGraph ):
     results = self.parsed_data
     if len( results.items() ) == 0:
       return None
-    keys = results.keys(); keys = self.sort_keys( keys )
+    keys = self.sort_keys( results )
     first_key = keys[0]
     if type(first_key) == types.StringType: is_str = True
     tmp_x = []; tmp_y = []
@@ -43,7 +43,9 @@ class BarGraph( PivotGraph ):
   def get_coords( self ):
     height = self.prefs['height']
     coords = self.coords
-    for pivot, bar in coords.items():
+    keys = self.sort_keys( self.parsed_data )
+    for pivot in keys:
+      bar = coords[pivot]
       t = bar.get_transform()
       my_coords = t.seq_xy_tups( bar.get_verts() )
       coords[ pivot ] = tuple( (i[0],height-i[1]) for i in my_coords )
@@ -88,15 +90,15 @@ class StackedBarGraph( PivotGroupGraph ):
     bottom = None
     colors = list(self.colors)
     coords = self.coords
-    keys = results.keys(); keys = self.sort_keys( keys ); keys.reverse()
+    keys = self.sort_keys( results ); keys.reverse()
     for pivot,color in zip(keys,colors):
       bottom, bars = self.make_stacked_bar( results[pivot], bottom, color )
-      groups = results[pivot].keys(); groups.sort() #groups = self.sort_keys( keys )
+      groups = results[pivot].keys(); groups.sort() 
       coords[pivot] = {}
       bar_dict = {}
       for bar in bars:
         bar_dict[ bar.get_verts()[0][0] ] = bar
-      bars_keys = bar_dict.keys(); bars_keys.sort() #bars_keys = self.sort_keys( bars_keys )
+      bars_keys = bar_dict.keys(); bars_keys.sort() 
       for idx in range(len(groups)):
         coords[pivot][groups[idx]] = bar_dict[ bars_keys[idx] ]
 
@@ -126,7 +128,9 @@ class StackedBarGraph( PivotGroupGraph ):
 
   def get_coords( self ):
     coords = self.coords
-    for pivot, groupings in coords.items():
+    keys = self.sort_keys( self.parsed_data )
+    for pivot in keys:
+      groupings = coords[pivot]
       for group, p in groupings.items():
         t = p.get_transform()
         my_coords = t.seq_xy_tups( p.get_verts() )
@@ -135,7 +139,7 @@ class StackedBarGraph( PivotGroupGraph ):
     self.coords = coords
     return coords
 
-class CumulativeGraph( TimeGraph ):
+class CumulativeGraph( TimeGraph, PivotGroupGraph ):
  
   def make_bottom_text( self ):
     results = self.results 
@@ -143,7 +147,7 @@ class CumulativeGraph( TimeGraph ):
     agg_stats = {} 
     data_max = 0
     for pivot, groups in results.items():
-      timebins = groups.keys(); timebins.sort() #timebins = self.sort_keys( timebins )
+      timebins = groups.keys(); timebins.sort()
       data_max += groups[ timebins[-1] ]
   
     timespan = (self.end_num - self.begin_num)*86400.0
@@ -249,7 +253,7 @@ class CumulativeGraph( TimeGraph ):
     colors = self.colors
     bottom = None
     coords = self.coords
-    keys = results.keys(); keys = self.sort_keys( keys ); keys.reverse()
+    keys = self.sort_keys( results ); keys.reverse()
     for link, color in zip(keys,colors):
       bottom, bars = self.make_stacked_line( results[link], bottom, color )
       coords[ link ] = bars[0]  
@@ -266,7 +270,7 @@ class CumulativeGraph( TimeGraph ):
     transform = links.values()[0].get_transform()
     timebins = results.values()[0].keys(); timebins.sort()
     timebins_num = [date2num( datetime.datetime.utcfromtimestamp( to_timestamp( timebin ) ) ) for timebin in timebins]
-    keys = results.keys(); keys = self.sort_keys( keys ); keys.reverse()
+    keys = self.sort_keys( results ); keys.reverse()
     for idx in range(len(timebins)-1):
       timebin = timebins[idx]
       timebin_next = timebins[idx+1]
@@ -288,7 +292,8 @@ class CumulativeGraph( TimeGraph ):
     timebin = timebins[-1]
     timebin_num = timebins_num[-1]
     csum_left = 0; csum_right = 0
-    for pivot, groups in results.items():
+    for pivot in keys:
+      groups = results[pivot]
       time_begin = timebin_num
       time_end = self.end_num
       size_left = groups[timebin]
@@ -423,16 +428,18 @@ class PieGraph( PivotGraph ):
     results = self.results
     parsed_data = self.results
 
-    title = getattr( self, 'title', results.query.title )
+    try: query = results.query
+    except: query = None
 
-    title = title + ' (Sum: %i ' + results.query.column_units.strip() + ')'
-    #title = add_time_to_title( title, begin, end )
-    title = expand_string( title, results.sql_vars )
+    title = getattr( self, 'title', getattr( query, 'title', '') )
+
+    title = title + ' (Sum: %i ' + getattr( query, 'column_units', '').strip() + ')'
+    title = expand_string( title, getattr( results, 'sql_vars', {} ) )
   
     labels = []
     amt = [] 
-    keys = parsed_data.keys()
-    for key in self.sort_keys( keys ):
+    keys = self.sort_keys( parsed_data )
+    for key in keys:
       labels.append( str(key) + (' (%i)' % float(parsed_data[key])) )
       amt.append( float(parsed_data[key]) )
     self.labels = labels
@@ -501,18 +508,18 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
 
     super( QualityMap, self ).setup()
 
-    results = self.results
+    results = self.parsed
     self.try_column = int(dict(results.query.__dict__).pop('try_column',0)) 
     self.done_column = int(dict(results.query.__dict__).pop('done_column',1))
     self.fail_column = int(dict(results.query.__dict__).pop('fail_column',2))
 
     # Rearrange our data
-    links = set(); timebins = set()
-    keys = results.keys()
-    for link in self.sort_keys( keys ):
+    timebins = set()
+    for link in self.sort_keys( results ):
       for timebin in results[link].keys():
-        links.add( link ); timebins.add( timebin )
-    links = list(links); timebins = list(timebins)
+        timebins.add( timebin )
+    links = self.sort_keys(results); 
+    links.reverse(); timebins = list(timebins)
     links_lu = {}; timebins_lu = {}
     counter = 0
     for link in links: links_lu[link] = counter; counter += 1
@@ -554,8 +561,7 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
     links_lu = self.links_lu
     try_column, done_column, fail_column = self.try_column, self.done_column, self.fail_column
     results = self.parsed_data
-    keys = results.keys()
-    for link in self.sort_keys( keys ):
+    for link in self.sort_keys( results ):
       coords[link] = {}
       for timebin in results[link].keys():
         data = results[link][timebin]
@@ -621,7 +627,9 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
 
     coords = self.coords
     height = self.prefs['height']
-    for pivot, groups in coords.items():
+    keys = self.sort_keys( self.parsed_data )
+    for pivot in keys:
+      groups = coords[pivot] 
       for group, p in groups.items():
         t = p.get_transform()
         my_coords = t.seq_xy_tups( p.get_verts() )
