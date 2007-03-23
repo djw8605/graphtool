@@ -1,0 +1,31 @@
+<graphtool-config>
+
+  <import file="$CONFIG_ROOT/generic_queries.xml" />
+
+  <class type="SqlQueries" name="ExampleQueries">
+
+    <attribute name="connection_manager"> ConnMan </attribute>
+
+    <attribute name="display_name"> Example Queries  </attribute>
+
+    <query name="pirates" base="GenericQuery.pirate_query">
+      <sql>
+        <filler name="column"> treasure.gold </filler>
+      </sql>
+      <attribute name="title"> Pirate Treasure - Amount of Gold </attribute>
+      <attribute name="column_names"> Gold Obtained </attribute>
+      <attribute name="column_units"> kg </attribute>
+    </query>
+
+    <query name="pirates" base="GenericQuery.pirate_query">
+      <sql>
+        <filler name="column"> treasure.jewels </filler>
+      </sql>
+      <attribute name="title"> Pirate Treasure - Amount of Jewels </attribute>
+      <attribute name="column_names"> Jewels Obtained </attribute>
+      <attribute name="column_units"> N Jewels </attribute>
+    </query>
+
+  </class>
+
+</graphtool-config>

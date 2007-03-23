@@ -1,0 +1,22 @@
+
+<graphtool-config>
+
+  <import module="graphtool.web"> WebHost, StaticContent, HelloWorld </import>
+  <import file="$CONFIG_ROOT/example_graphs.xml" />
+
+  <class name="static" type="StaticContent">   
+    <directory name="content"> $GRAPHTOOL_ROOT/static_content </directory>
+  </class>
+
+  <class name="test_case" type="HelloWorld" />
+
+  <class name="web" type="WebHost">
+    <mount location="/graphs" content="image/png"> <instance name="example_grapher"/> </mount>
+    <mount location="/xml" content="text/xml"> <instance name="query_xml" /> </mount>
+    <instance name="static" />
+    <instance name="test_case" />
+    <config>$CONFIG_ROOT/prod.conf</config>
+  </class>
+
+</graphtool-config>
+

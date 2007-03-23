@@ -1,0 +1,16 @@
+<graphtool-config>
+
+  <import module="graphtool.database.connection_manager"> ConnectionManager </import>
+
+  <class name="ConnMan" type="ConnectionManager">
+
+    <attribute name="default"> example </attribute>
+
+    <connection name="example">
+      <attribute name="Interface"> Sqlite </attribute>
+      <attribute name="DatabaseFile"> $GRAPHTOOL_USER_ROOT/example.db </attribute>
+    </connection>
+
+  </class>
+
+</graphtool-config>
