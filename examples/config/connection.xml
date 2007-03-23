@@ -7,7 +7,7 @@
     <attribute name="default"> example </attribute>
 
     <connection name="example">
-      <attribute name="Interface"> Sqlite </attribute>
+      <attribute name="Interface"> sqlite </attribute>
       <attribute name="DatabaseFile"> $GRAPHTOOL_USER_ROOT/example.db </attribute>
     </connection>
 

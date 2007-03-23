@@ -10,7 +10,7 @@
 
     <query name="pirate_gold" base="GenericQuery.pirate_query">
       <sql>
-        <filler name="column"> treasure.gold </filler>
+        <filler name="column"> sum(treasure.gold)/:span </filler>
       </sql>
       <attribute name="title"> Pirate Treasure - Amount of Gold </attribute>
       <attribute name="column_names"> Gold Obtained </attribute>
@@ -19,11 +19,11 @@
 
     <query name="pirate_jewels" base="GenericQuery.pirate_query">
       <sql>
-        <filler name="column"> treasure.jewels </filler>
+        <filler name="column"> sum(treasure.jewels)/:span </filler>
       </sql>
       <attribute name="title"> Pirate Treasure - Amount of Jewels </attribute>
       <attribute name="column_names"> Jewels Obtained </attribute>
-      <attribute name="column_units"> N Jewels </attribute>
+      <attribute name="column_units"> Jewels </attribute>
     </query>
 
   </class>

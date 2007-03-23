@@ -21,13 +21,13 @@
       <sql> 
         select
           pirate.name,
-          trunc( treasure.timebin/:span)*:span,
+          ( treasure.timebin/:span)*:span,
           <slot name="column"/>
         from pirate
-         oin treasure on treasure.pirate = pirate.id
+         join treasure on treasure.pirate = pirate.id
         where timebin &gt;= :starttime
           and timebin &lt;  :endtime
-        group by trunc(treasure.timebin/:span)*:span,
+        group by (treasure.timebin/:span)*:span,
                  pirate.name 
         order by 1 asc, 2
       </sql>
@@ -38,7 +38,7 @@
           <input name="results"> 2 </input>
         </inputs>
       </results>
-      <attribute name="graph_type">StackedBar</attribute>
+      <attribute name="graph_type">StackedBarGraph</attribute>
       <attribute name="pivot_name">Pirate</attribute>
       <attribute name="grouping_name">Time</attribute>
       <attribute name="title" />
