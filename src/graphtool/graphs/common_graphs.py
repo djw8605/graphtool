@@ -639,4 +639,7 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
 
     return coords
  
+class BasicStackedBarGraph ( TimeGraph, StackedBarGraph ):
+  
+  pass
 

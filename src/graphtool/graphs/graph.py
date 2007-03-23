@@ -158,6 +158,15 @@ class Graph( object ):
   def make_bottom_text( self ):
     return None
 
+  def make_labels_common( self, results ):
+    # Figure out the labels: 
+    labels = []
+    keys = self.sort_keys( results )
+    for label in keys:
+        labels.append( str(label) )
+    labels.reverse()
+    return labels
+
   def sort_keys( self, results, ignore_cache=False ):
     if self.sorted_keys != None and (not ignore_cache):
       return self.sorted_keys
@@ -166,7 +175,8 @@ class Graph( object ):
     return mykeys
 
   def setup( self ):
-    self.colors = self.preset_colors( self.sort_keys( self.parsed_data ) )
+    self.labels = self.make_labels_common( self.results )
+    self.colors = self.preset_colors( self.labels )
     pass
 
   def parse_data( self ):
@@ -434,7 +444,6 @@ class Graph( object ):
 class DBGraph( Graph ):
 
   def setup( self ):
-
     super( DBGraph, self ).setup()
 
     results = self.results

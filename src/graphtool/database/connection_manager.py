@@ -1,7 +1,7 @@
 from graphtool.tools.common import to_timestamp
 from graphtool.tools.cache import Cache
 from graphtool.base.xml_config import XmlConfig
-import threading, cStringIO, traceback
+import threading, cStringIO, traceback, os
 
 try:  
   import cx_Oracle
@@ -298,7 +298,7 @@ class SqliteDatabase( DBConnection ):
 
   def make_connection( self ):
     info = self.info
-    conn_str = ['DatabaseFile']
+    conn_str = os.path.expandvars(info['DatabaseFile'])
     self._conn = self.module.connect( conn_str )
     return self._conn
 
@@ -334,7 +334,6 @@ class SqliteDatabase( DBConnection ):
   def _execute_statement( self, statement, vars={} ):
     curs = self.get_cursor()
     curs.arraysize = 500
-    curs.prepare( statement )
     curs.execute( statement, vars )
     rows = curs.fetchall()
     self.release_cursor( curs )

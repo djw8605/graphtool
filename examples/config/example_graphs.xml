@@ -3,7 +3,7 @@
   <import file="$CONFIG_ROOT/example_queries.xml" />
 
   <import module="graphtool.graphs.graph">Grapher</import>
-  <import module="graphtool.graphs.common_graphs">StackedBarGraph</import>
+  <import module="graphtool.graphs.common_graphs">BasicStackedBarGraph</import>
 
   <class type="Grapher" name="example_grapher">
     <queryobj> ExampleQueries </queryobj>
