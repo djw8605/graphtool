@@ -638,8 +638,3 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
         coords[pivot][group] = tuple( (i[0],height-i[1]) for i in my_coords )
 
     return coords
- 
-class BasicStackedBarGraph ( TimeGraph, StackedBarGraph ):
-  
-  pass
-
