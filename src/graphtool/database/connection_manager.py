@@ -16,9 +16,16 @@ try:
 except Exception, e:
   mysql_present = False
 
+try:
+  from pysqlite2 import dbapi2 as sqlite
+  sqlite_present = True
+except Exception, e:
+  sqlite_present = False
+
 db_classes = { \
                  'Oracle':'OracleDatabase',
-                 'MySQL' :'MySqlDatabase'
+                 'MySQL' :'MySqlDatabase',
+                 'sqlite' :'SqliteDatabase'
              }
 
 class ConnectionManager( XmlConfig ):
@@ -279,3 +286,56 @@ class MySqlDatabase( DBConnection ):
     self.release_cursor( curs )
     return results
 
+class SqliteDatabase( DBConnection ):
+
+  def __init__( self, *args, **kw ):
+    super( SqliteDatabase, self ).__init__( *args, **kw )
+    if sqlite_present:
+      self.module = sqlite
+    else:
+      raise Exception( "sqlite python module did not load correctly." )
+    self._conn = None
+
+  def make_connection( self ):
+    info = self.info
+    conn_str = ['DatabaseFile']
+    self._conn = self.module.connect( conn_str )
+    return self._conn
+
+  def test_connection( self ):
+    if self._conn == None: return False 
+    try:
+      test = 'select 1+1'
+      curs = self._conn.cursor()
+      curs.execute( test )
+      curs.fetchall()
+      assert curs.rowcount > 0
+      curs.close()
+    except:
+      return False
+    return True
+
+  def get_connection( self ):
+    if self._conn == None:
+      return self.make_connection()
+    elif self.test_connection():
+      return self._conn
+    else:
+      return self.make_connection()
+      
+  def get_cursor( self ):
+    conn = self.get_connection()
+    return conn.cursor()
+
+  def release_connection( self, conn ): conn.close()
+  
+  def release_cursor( self, curs ): curs.close()
+
+  def _execute_statement( self, statement, vars={} ):
+    curs = self.get_cursor()
+    curs.arraysize = 500
+    curs.prepare( statement )
+    curs.execute( statement, vars )
+    rows = curs.fetchall()
+    self.release_cursor( curs )
+    return rows
