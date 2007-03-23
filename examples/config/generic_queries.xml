@@ -21,13 +21,13 @@
       <sql> 
         select
           pirate.name,
-          ( treasure.timebin/:span)*:span,
+          round( treasure.timebin/:span)*:span,
           <slot name="column"/>
         from pirate
          join treasure on treasure.pirate = pirate.id
         where timebin &gt;= :starttime
           and timebin &lt;  :endtime
-        group by (treasure.timebin/:span)*:span,
+        group by round(treasure.timebin/:span)*:span,
                  pirate.name 
         order by 1 asc, 2
       </sql>

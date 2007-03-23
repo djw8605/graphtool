@@ -12,9 +12,13 @@ cur = con.cursor()
 cur.execute('''create table pirate (id INTEGER, name varchar(100) ) ''')
 cur.execute('''create table treasure (timebin integer, pirate integer, gold integer, jewels integer)''')
 
-pirates = ({ 'id': 0, 'name': 'John' },
-           { 'id': 1, 'name': 'Jack'},
-           { 'id': 2, 'name': 'Robert'})
+pirates = ({ 'id': 0, 'name': 'Shoutin Clive Morgan' },
+           { 'id': 1, 'name': 'Screaming Sam'},
+           { 'id': 2, 'name': 'Bluebeard'},
+           { 'id': 3, 'name': 'Hairy Jock Smythe' },
+           { 'id': 4, 'name': 'Pele' },
+           { 'id': 5, 'name': 'Leather-face John Blackbeard' },
+           { 'id': 6, 'name': 'Sir William Defoe' })
 
 insert = '''insert into pirate (id, name) values (:id, :name)'''
 for pirate in pirates:
