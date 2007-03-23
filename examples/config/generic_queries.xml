@@ -4,10 +4,13 @@
 
   <import module="graphtool.database.queries">SqlQueries</import>
   <import module="time"/> 
-
   <import file="$CONFIG_ROOT/connection.xml" />
 
   <class type="SqlQueries" name="GenericQuery">
+
+    <attribute name="connection_manager"> ConnMan </attribute>
+
+    <attribute name="display_name"> Example Queries  </attribute>
 
     <query name="pirate_query">
       <inputs>

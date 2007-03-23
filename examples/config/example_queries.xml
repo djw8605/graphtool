@@ -8,7 +8,7 @@
 
     <attribute name="display_name"> Example Queries  </attribute>
 
-    <query name="pirates" base="GenericQuery.pirate_query">
+    <query name="pirate_gold" base="GenericQuery.pirate_query">
       <sql>
         <filler name="column"> treasure.gold </filler>
       </sql>
@@ -17,7 +17,7 @@
       <attribute name="column_units"> kg </attribute>
     </query>
 
-    <query name="pirates" base="GenericQuery.pirate_query">
+    <query name="pirate_jewels" base="GenericQuery.pirate_query">
       <sql>
         <filler name="column"> treasure.jewels </filler>
       </sql>

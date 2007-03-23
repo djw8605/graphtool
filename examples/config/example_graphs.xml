@@ -8,4 +8,11 @@
     <queryobj> ExampleQueries </queryobj>
   </class>
 
+  <import module="graphtool.tools.query_output">XmlGenerator</import>
+
+  <class type="XmlGenerator" name="query_xml">
+    <queryobj> ExampleQueries </queryobj>
+  </class>
+
+
 </graphtool-config>
