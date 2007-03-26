@@ -1,0 +1,43 @@
+GraphTool README
+
+GraphTool is a python graphing tool using the matplotlib library that
+runs under CherryPy.
+
+Dependencies
+
+At this time (2007-03-26) not all dependencies are available via CMS
+aptinstaller.
+
+Available via aptinstaller under SLC4:
+
+external+python+2.4.3
+external+py2-cx-oracle+4.2
+external+py2-pil+1.1.6
+external+py2-numpy+1.0.1
+external+py2-matplotlib+0.87.7
+external+libjpg+6b
+external+libtiff+3.8.2
+external+libpng+1.2.10
+
+These you must build yourself:
+
+CherryPy-3.0.1
+Imaging-1.1.6
+python-dateutil-1.1
+pytz-2006p
+pysqlite-2.3.3
+
+In the (hopefully near) future these dependencies will be made
+available via aptinstaller and also GraphTool itself will be packaged
+as an RPM.
+
+Using the package:
+
+See the README in the "examples" directory.
+
+Contacts:
+
+If you have questions please contact:
+
+Brian Bockelman bbockelm@math.unl.edu (package Author)
+Ricky Egeland Ricky.Egeland@cern.ch (#1 user)
