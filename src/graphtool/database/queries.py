@@ -233,7 +233,7 @@ class SqlQuery( XmlConfig ):
     elif my_type == 'float':
       return float( string )
     elif my_type == 'eval':
-      return eval(str(string),self.globals,{'self':self})
+      return eval(str(string),{'__builtins__':None,'time':time},{})
     elif my_type == 'datetime':
       return convert_to_datetime( string )
     elif my_type == 'timestamp':
@@ -374,7 +374,7 @@ class Inputs( XmlConfig ):
     elif my_type == 'float':
       return float( string )
     elif my_type == 'eval':
-      return eval(str(string),self.globals,{'self':self})
+      return eval(str(string),{'__builtins__':None,'time':time},{})
     elif my_type == 'datetime':
       return convert_to_datetime( string )
     elif my_type == 'timestamp':

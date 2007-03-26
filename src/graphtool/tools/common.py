@@ -1,4 +1,4 @@
-import time, datetime, calendar, types
+import time, datetime, calendar, types, math
 
 def parseOpts( args ):
   # Stupid python 2.2 on SLC3 doesn't have optparser...
@@ -40,7 +40,7 @@ def convert_to_datetime( string ):
         if type(string) == datetime.datetime:
           results = string
         else:
-          results = eval(str(string),globals(),{})
+          results = eval(str(string),{'__builtins__':None,'time':time,'math':math},{})
         if type(results) == types.FloatType or type(results) == types.IntType:
           results = datetime.datetime.utcfromtimestamp( results )
         elif type(results) == datetime.datetime:
