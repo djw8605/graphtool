@@ -1,6 +1,52 @@
 <graphtool-config>
 
-  <import file="$CONFIG_ROOT/generic_queries.xml" />
+  <import file="$CONFIG_ROOT/connection.xml" />
+
+  <import module="graphtool.database.query_handler">*</import>
+  <import module="graphtool.database.queries">SqlQueries</import>
+  <import module="time"/> 
+
+  <class type="SqlQueries" name="GenericQuery">
+
+    <attribute name="connection_manager"> ConnMan </attribute>
+
+    <attribute name="display_name"> Example Queries  </attribute>
+
+    <query name="pirate_query">
+      <inputs>
+        <input kind='sql' name="span" type="eval"> 3600*24*7 </input>
+        <input kind='sql' name="starttime" type="eval">time.time()-12*3600*24*7</input>
+        <input kind='sql' name="endtime" type="eval">time.time()</input>
+      </inputs>
+      <sql> 
+        select
+          pirate.name,
+          round( treasure.timebin/:span)*:span,
+          <slot name="column"/>
+        from pirate
+         join treasure on treasure.pirate = pirate.id
+        where timebin &gt;= :starttime
+          and timebin &lt;  :endtime
+        group by round(treasure.timebin/:span)*:span,
+                 pirate.name 
+        order by 1 asc, 2
+      </sql>
+      <results module="graphtool.database.query_handler" function="results_parser">
+        <inputs all="True">
+          <input name="pivots"> 0 </input>
+          <input name="grouping"> 1 </input>
+          <input name="results"> 2 </input>
+        </inputs>
+      </results>
+      <attribute name="graph_type">BasicStackedBar</attribute>
+      <attribute name="pivot_name">Pirate</attribute>
+      <attribute name="grouping_name">Time</attribute>
+      <attribute name="title" />
+      <attribute name="column_names"/>
+      <attribute name="column_units" />
+    </query>
+
+  </class>
 
   <class type="SqlQueries" name="ExampleQueries">
 
