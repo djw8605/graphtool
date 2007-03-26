@@ -1,0 +1,49 @@
+GraphTool example README
+
+How to Run
+
+1.  Setup dependancies
+
+emacs setup.sh  # set variables for your environment
+source setup.sh
+
+2.  Generate example DB
+
+graphtool-create-exampledb.py
+
+3.  Start application/cherrypy server
+
+graphtool-example.py
+
+4.  Look at example
+
+http://<hostmachine>:8082/xml
+
+
+
+Configuration Files
+
+connection.xml
+
+Defines the connection to the database.  (In this example it is an
+sqlite connection)
+
+example_graphs.xml
+
+Loads the graphing classes.
+
+example_queries.xml
+
+Defines the example query SQL and inputs
+
+matplotlibrc
+
+Used by the graphing library
+
+prod.conf
+
+Defines the cherrypy server settings and some GraphTool parameters
+
+website.xml
+
+Defines the services available to the cherrypy server.
