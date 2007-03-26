@@ -6,10 +6,26 @@
 
     <attribute name="default"> example </attribute>
 
+    <!-- Connection used in example -->
     <connection name="example">
       <attribute name="Interface"> sqlite </attribute>
       <attribute name="DatabaseFile"> $GRAPHTOOL_USER_ROOT/example.db </attribute>
     </connection>
+
+    <!-- Example of an Oracle Connection
+         Change data where appropriate.  Use of Roles is optional.
+    <connection name="oracle_example">
+      <attribute name="Interface"> Oracle </attribute>
+      <attribute name="Database"> databaseName </attribute>
+      <attribute name="AuthDBUsername"> username </attribute>
+      <attribute name="AuthDBPassword"> password </attribute>
+      <attribute name="AuthRole"> optional Role  </attribute>
+      <attribute name="AuthRolePassword"> password </attribute>
+      <attribute name="ConnectionLife"> 86400 </attribute>
+      <attribute name="LogConnection"> on </attribute>
+      <attribute name="LogSQL"> off </attribute>
+    </connection>
+    -->
 
   </class>
 
