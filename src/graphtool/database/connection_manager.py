@@ -67,9 +67,12 @@ class ConnectionManager( XmlConfig ):
   def make_connection( self, name ):
     info = self.db_info[ name ]
     try:
-      dbclass = globals()[ db_classes[ info['Interface'] ] ]
+      dbclass = self.globals[ db_classes[ info['Interface'] ] ]
     except:
-      raise Exception( "Could not find DBConnection class!" )
+      try:
+        dbclass = globals()[ db_classes[ info['Interface'] ] ]
+      except:
+        raise Exception( "Could not find DBConnection class!" )
     my_conn = dbclass( info )
     self.db_objs[ name ] = my_conn
     return my_conn
@@ -281,8 +284,12 @@ class MySqlDatabase( DBConnection ):
     my_tuple = ()
     for place in places:
       my_tuple += (sql_vars[placement_dict[place]],)
-    curs.execute( my_string, my_tuple )
-    results = curs.fetchall()
+    try:
+      curs.execute( my_string, my_tuple )
+      results = curs.fetchall()
+    except Exception, e:
+      self.release_cursor( curs )
+      raise e
     self.release_cursor( curs )
     return results
 
@@ -334,7 +341,11 @@ class SqliteDatabase( DBConnection ):
   def _execute_statement( self, statement, vars={} ):
     curs = self.get_cursor()
     curs.arraysize = 500
-    curs.execute( statement, vars )
-    rows = curs.fetchall()
+    try:
+      curs.execute( statement, vars )
+      rows = curs.fetchall()
+    except Exception, e:
+      self.release_cursor( curs )
+      raise e
     self.release_cursor( curs )
     return rows
