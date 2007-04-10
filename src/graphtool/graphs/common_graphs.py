@@ -58,7 +58,7 @@ class StackedBarGraph( PivotGroupGraph ):
   is_timestamps = False
 
   def make_bottom_text( self ):
-    units = str(self.results.query.column_units).strip()
+    units = str(self.metadata.pop('column_units','')).strip()
     agg_stats = {}
     results = self.parsed_data
     for link, groups in results.items():
@@ -143,7 +143,7 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
  
   def make_bottom_text( self ):
     results = self.results 
-    units = str(results.query.column_units).strip()
+    units = str(self.metadata.pop('column_units','')).strip()
     agg_stats = {} 
     data_max = 0
     for pivot, groups in results.items():
@@ -162,7 +162,7 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
 
     results = self.results
     
-    is_cumulative = getattr( results, 'is_cumulative', False )
+    is_cumulative = self.metadata.pop( 'is_cumulative', False )
 
     if not is_cumulative:
       raise Exception( "Data passed to cumulative graph not marked as cumulative." )
@@ -428,13 +428,12 @@ class PieGraph( PivotGraph ):
     results = self.results
     parsed_data = self.results
 
-    try: query = results.query
-    except: query = None
+    column_units = getattr( self, 'column_units', '' )
+    sql_vars = getattr( self, 'vars', {} )
+    title = getattr( self, 'title', '' )
 
-    title = getattr( self, 'title', getattr( query, 'title', '') )
-
-    title = title + ' (Sum: %i ' + getattr( query, 'column_units', '').strip() + ')'
-    title = expand_string( title, getattr( results, 'sql_vars', {} ) )
+    title = title + ' (Sum: %i ' + column_units.strip() + ')'
+    title = expand_string( title, sql_vars )
   
     labels = []
     amt = [] 
@@ -511,9 +510,9 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
     super( QualityMap, self ).setup()
 
     results = self.parsed_data
-    self.try_column = int(dict(results.query.__dict__).pop('try_column',0)) 
-    self.done_column = int(dict(results.query.__dict__).pop('done_column',1))
-    self.fail_column = int(dict(results.query.__dict__).pop('fail_column',2))
+    self.try_column =  int( self.metadata.pop('try_column',0)  ) 
+    self.done_column = int( self.metadata.pop('done_column',1) )
+    self.fail_column = int( sefl.metadata.pop('fail_column',2) )
 
     # Rearrange our data
     timebins = set()
@@ -638,3 +637,4 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
         coords[pivot][group] = tuple( (i[0],height-i[1]) for i in my_coords )
 
     return coords
+

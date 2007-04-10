@@ -8,76 +8,9 @@ class ExtDict( dict ):
 class ExtList( list ):
   pass
 
-class QueryHandler( XmlConfig ):
+class QueryHandler( ObjectIterator ):
 
-  commands = { 'default' : 'run_query',
-               'run' : 'run_query',
-               'list' : 'list_queries' }
-
-  is_executable = False
-
-  display_name = 'query'
-
-  default_accepts_any = True
-
-  def __init__( self, *args, **kw ):
-    self.known_commands = {}
-    super( QueryHandler, self ).__init__( *args, **kw )
-
-  def parse_dom( self ):
-    super( QueryHandler, self ).parse_dom()
-    classes = self.find_classes( must_be_executable=False )
-    self.query_objs = []
-    for query_obj_dom in self.dom.getElementsByTagName('queryobj'):
-      text_node = query_obj_dom.firstChild
-      if text_node.nodeType != text_node.TEXT_NODE: continue
-      text = str( text_node.data.strip() )
-      if not (text in classes.keys()):
-        #print "Queryobj for %s not found" % text
-        continue
-      query_obj = classes[text]
-      self.query_objs.append( query_obj )
-      if isinstance( query_obj, QueryHandler ):
-        command_dict = query_obj.known_commands
-      else:
-        command_dict = query_obj.commands
-      for query, method_name in command_dict.items():
-        self.known_commands[query] = getattr( query_obj, method_name )
-
-  def pre_query( self, query, *args, **kw ):
-    pass
-
-  def handle_query( self, results, *args, **kw ):
-    pass
-
-  def handle_list( self, *args, **kw ):
-    pass
-  
-  def run_query( self, *args, **kw ):
-    if len(args) == 0:
-      return  self.handle_list( *args, **kw )
-    query_args = args[1:]
-    query_name = args[0]
-    try:
-      query_func = self.known_commands[ query_name ]
-    except KeyError:
-      out = cStringIO.StringIO()
-      print >> out, "\nQuery name %s not known." % query_name
-      if len(self.known_commands.keys()) == 0:
-        print >> out, "(No queries known.)\n"
-      else:
-        print >> out, "Currently available queries are:"
-        for query_name in self.known_commands.keys():
-          print >> out, " - %s" % query_name
-        print ""
-      raise Exception( out.getvalue() )
-    pre_results = self.pre_query( query_func, *query_args, **kw )
-    if pre_results:
-      return pre_results
-    results = query_func( *query_args, **kw )
-    return self.handle_query( results, **kw )
-
-  def list_queries( self, *args, **kw ):
+  def list( self, *args, **kw ):
     if len(self.known_commands.keys()) == 0:
       print "\nNo queries known!\n"
     else:

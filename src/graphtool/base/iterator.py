@@ -24,22 +24,26 @@ class ObjectIterator( XmlConfig ):
       if text_node.nodeType != text_node.TEXT_NODE: continue
       text = str( text_node.data.strip() )
       if not (text in classes.keys()):
-        #print "Object for %s not found" % text
         continue
       obj = classes[text]
-      #print "Object for iterator", obj
-      for pair in obj.commands.items():
-        #print "Adding", pair
-        self.known_commands[pair[0]] = getattr(obj, pair[1])
+      if isinstance( query_obj, ObjectIterator ):
+        command_dict = query_obj.known_commands
+      else:
+        command_dict = query_obj.commands
+      for query, method_name in command_dict.items():
+        self.known_commands[query] = getattr( query_obj, method_name )
 
-  def handle_results( results, **kw ):
-    return results
+  def handle_results( results, metadata, **kw ):
+    return results, metadata
 
   def handle_args( self, *args, **kw ):
     return args, kw
 
   def handle_list( self, *args, **kw ):
     return self.list( *args, **kw )
+
+  def pre_command( self, query, *args, **kw ):
+    pass
 
   def run( self, *args, **kw ):
     if len(args) == 0:
@@ -49,10 +53,14 @@ class ObjectIterator( XmlConfig ):
     if cmd_name in self.known_commands.keys():
       cmd_func = self.known_commands[ cmd_name ]
     else:
+      self.handle_list( *args, **kw )
       raise Exception( "Command name %s not known" % cmd_name )
     cmd_args, kw = self.handle_args( *cmd_args, **kw )
-    results = cmd_func( *cmd_args, **kw )
-    return self.handle_results( results, **kw )
+    pre_results = self.pre_command( query_func, *query_args, **kw )
+    if pre_results:
+      return pre_results
+    results, metadata = cmd_func( *cmd_args, **kw )
+    return self.handle_results( results, metadata, **kw )
 
   def list( self, *args, **kw ):
     out = cStringIO.StringIO()
@@ -63,7 +71,6 @@ class ObjectIterator( XmlConfig ):
       for query_name in self.known_commands.keys():
         print >> out, " - %s" % query_name
       print >> out, ""
-    print out.getvalue()
     return out.getvalue()
 
 

@@ -16,6 +16,7 @@ class GraphToolInfo(object):
     self.args = args
     self.kw = kw
     self.globals = globals()
+    self.metadata = {}
 
   def consume_keyword( self, kw_name, args=None ):
     if args == None:
@@ -41,6 +42,10 @@ class GraphToolInfo(object):
         else:
           my_classes[ name ] = item
     return my_classes
+
+  def expand_path( self, path ):
+    #return os.path.abspath( os.path.expandvars( os.path.expanduser( path ) ) )
+    return os.path.expandvars( os.path.expanduser( path ) )
 
   def command( self, args, opts, kwargs, cmd_name = 'default' ):
     # TODO: reorganize

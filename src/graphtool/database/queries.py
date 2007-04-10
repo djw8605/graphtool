@@ -40,11 +40,13 @@ class SqlQueries( DatabaseInfoV2 ):
     query_class = globals()[ query_class_name ]
 
     query_obj = query_class( query_dom, self )
+ 
+    for kw, item in self.metadata.items():
+      if kw not in query_obj.metadata:
+        query_obj.metadata[kw] = item
 
     name = query_dom.getAttribute('name')
-
     setattr( self, name, query_obj )
-
     self.commands[name] = name
 
 class SqlQuery( XmlConfig ):
@@ -121,12 +123,13 @@ class SqlQuery( XmlConfig ):
           sem_count += 1
       vars['globals'] = self.globals 
       results = function( results, **vars )
-      for kw, val in self.__dict__.items(): setattr( results, kw, val ) 
-      for kw, val in ctx.__dict__.items(): setattr( results, kw, val ) 
-      results.query = self
-      results.given_kw = inputs.filter( my_kw )
-      results.sql_vars = sql_vars
-      return results
+      metadata = {}
+      for kw, val in self.metadata.items(): metadata[kw] = val 
+      for kw, val in self.metadata.items(): metadata[kw] = val
+      metadata['query'] = self 
+      metadata['given_kw'] = inputs.filter( my_kw )
+      metadata['sql_vars'] = sql_vars
+      return results, metadata
 
     query.results = function
     query.agg = agg

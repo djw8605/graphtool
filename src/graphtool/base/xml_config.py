@@ -1,10 +1,10 @@
 
 from graphtool.base import GraphToolInfo
-from graphtool.tools.file_config import FileConfig
+from graphtool.common.tools import import_module
 from xml.dom.minidom import parse
 import types, traceback, cStringIO
 
-class XmlConfig( FileConfig ):
+class XmlConfig( GraphToolInfo ):
 
   def __init__( self, *args, **kw ):
     super( XmlConfig, self ).__init__( *args, **kw )
@@ -22,6 +22,7 @@ class XmlConfig( FileConfig ):
 
   def parse_attributes( self, obj, dom ):
     is_dict = isinstance( obj, types.DictType )
+    child_metadata = getattr( obj, 'metadata', False )
     for child in dom.getElementsByTagName('attribute'):
       if not (child in dom.childNodes):
         continue
@@ -39,6 +40,7 @@ class XmlConfig( FileConfig ):
           obj[ name ] = value
         else:
           setattr( obj, name, value )
+          if child_metadata: child_metadata[name] = value
       except Exception, e:
         raise Exception( "Unable to set attribute %s to value %s\n%s" % (name, value, str(e)) )
 
@@ -103,33 +105,16 @@ class XmlConfig( FileConfig ):
       my_class = self.globals[class_name]
     except:
       raise  Exception("Could not load class %s.  Was it imported?" % class_name)
-    #try:
     self.globals[objname] = my_class( dom=dom )
-    #except Exception, e:
-    #  print "\nUnable to load class", class_name
-    #  print "Exception thrown:"
-    #  print e, "\n"
 
 def attributes_to_dict( attribute_dom ):
   attrs = {}
   for child in attribute_dom.getElementsByTagName('attribute'):
+    if child not in attribute_dom.childNodes: continue
     name = child.getAttribute('name')
     value = child.firstChild
     if name == '': continue
     if value == None or value.nodeType != value.TEXT_NODE: continue
     attrs[name] = value
   return attrs
-
-def import_module( module_name ):
-  module_list = module_name.split('.')
-  module = __import__( module_name )
-  if len(module_list) > 1:
-    for mod_name in module_list[1:]:
-      try:
-        module = getattr( module, mod_name )
-      except AttributeError, ae:
-        #print "Module %s has no submodule named %s" % (str(module), mod_name)
-        raise ae
-  return module
-
 

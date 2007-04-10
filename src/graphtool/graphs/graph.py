@@ -15,8 +15,6 @@ from graphtool.tools.cache import Cache
 from graphtool.database.query_handler import QueryHandler
 from matplotlib.dates import date2num
 
-class ExtDict( dict ): pass
-
 cStringIO_type = type(cStringIO.StringIO())
 
 prefs = {
@@ -61,6 +59,10 @@ def draw_empty( text, file, kw ):
   else:
     canvas.print_figure(  file, **kw )
 
+def find_info( attr, kw, metadata ):
+  str_attr = str(attr)
+  return kw.pop( str_attr, metadata.pop( str_attr, '' ) )
+
 class Grapher( Cache,QueryHandler ):
 
   """ Thread-safe, caching grapher.  Simply call "do_graph" to
@@ -87,10 +89,10 @@ class Grapher( Cache,QueryHandler ):
     results = self.check_cache( hash_str )
     if results: return results[1]
 
-  def handle_query( self, results, *args, **kw ):
-    return self.do_graph( results, **kw )
+  def handle_results( self, results, metadata, *args, **kw ):
+    return self.do_graph( results, metadata, **kw )
 
-  def do_graph( self, obj, is_query=False, **kw ):
+  def do_graph( self, obj, metadata, is_query=False, **kw ):
     if is_query: query = obj
     else: query = obj.query
     hash_str = self.make_hash_str( query, **kw )
@@ -109,18 +111,18 @@ class Grapher( Cache,QueryHandler ):
         return results[1]
       if is_query:
         try:
-          results = query( **kw )
+          results, metadata = query( **kw )
         except Exception, e:
           self.remove_progress( hash_str )
           raise e
       else:
         results = obj
       try:
-        graph_name = query.graph_type
+        graph_name = metadata['graph_type']
         graph = self.globals[ graph_name ]
         file = cStringIO.StringIO()
         graph_instance = graph() 
-        graph_results = graph_instance.run( results, file, **kw )
+        graph_results = graph_instance.run( results, file, metadata, **kw )
       except Exception, e:
         self.remove_progress( hash_str )
         st = cStringIO.StringIO()
@@ -138,11 +140,12 @@ class Graph( object ):
     super( Graph, self ).__init__( *args, **kw )
     self.sorted_keys = None
 
-  def run( self, results, file, **kw ):
+  def run( self, results, file, metadata, **kw ):
     self.prefs = dict(prefs)
     self.kw = kw
     self.file = file
     self.results = results
+    self.metadata = metadata
     self.coords = {}
     self.parse_data( )
     self.setup( )
@@ -171,9 +174,6 @@ class Graph( object ):
 
   def parse_data( self ):
     self.parsed_data = dict( self.results )
-    self.parsed_data = ExtDict( self.results )
-    for key, item in self.results.__dict__.items():
-      setattr( self.parsed_data, key, item )
 
   def draw_empty( self ):
     prefs = self.prefs
@@ -436,17 +436,18 @@ class DBGraph( Graph ):
   def setup( self ):
     super( DBGraph, self ).setup()
 
-    results = self.results
+    results = self.results; metadata = self.metadata
     kw = dict( self.kw )
-    try:
-      self.vars = dict( results.sql_vars )
-    except:
-      self.vars = {}
-    self.title = getattr( self, 'title', kw.pop( 'title', results.query.title ) )
-    self.ylabel = kw.pop( 'ylabel', results.query.column_names + " ["+results.query.column_units+"]" )
-    if 'grouping_name' in results.query.__dict__.keys():
-      self.xlabel = kw.pop( 'xlabel', results.query.grouping_name )
-    self.kind  = results.query.pivot_name
+    self.vars = metadata.pop('sql_vars',{})
+    self.title = getattr( self, 'title', find_info('title', kw, metadata ) )
+    column_names = find_info( 'column_names', kw, metadata ); column_units = find_info( 'columns_units', kw, metadata )
+    if len(str(column_units)) > 0:
+      self.ylabel = "%s [%s]" % (column_names, column_units)
+    else:
+      self.ylabel = str(column_names)
+    if 'grouping_name' in metadata:
+      self.xlabel = find_info( 'xlabel', kw, metadata )
+    self.kind  = find_info( 'pivot_name', kw, metadata )
     self.title = expand_string( self.title, self.vars )
 
 class PivotGroupGraph( Graph ):
@@ -481,10 +482,8 @@ class PivotGroupGraph( Graph ):
 
   def parse_data( self ):
     super( PivotGroupGraph, self ).parse_data()
-    new_parsed_data = ExtDict()
+    new_parsed_data = {}
     parsed_data = getattr( self, 'parsed_data', self.results )
-    for key, item in parsed_data.__dict__.items():
-      setattr( new_parsed_data, key, item )    
     for pivot, groups in parsed_data.items():
       new_pivot = self.parse_pivot( pivot )
       new_groups = {}
@@ -523,10 +522,8 @@ class PivotGraph( Graph ):
     
   def parse_data( self ):
     super( PivotGraph, self ).parse_data()
-    new_parsed_data = ExtDict()
+    new_parsed_data = {}
     parsed_data = getattr( self, 'parsed_data', self.results )
-    for key, item in parsed_data.__dict__.items():
-      setattr( new_parsed_data, key, item ) 
     for pivot, data in parsed_data.items():
       new_pivot = self.parse_pivot( pivot )
       new_parsed_data[ new_pivot ] = self.parse_datum( data )
@@ -615,7 +612,7 @@ class TimeGraph( DBGraph ):
 
     self.width = vars.pop('span', self.time_interval() ) 
 
-    title = getattr( self, 'title', self.results.query.title )
+    title = getattr( self, 'title', '' )
     self.title = self.add_time_to_title( title )
 
   def write_graph( self ):

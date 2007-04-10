@@ -76,5 +76,16 @@ def expand_string( string, vars ):
   for key in vars.keys():
     string = string.replace( '$' + str(key), str(vars[key]) )
   return string
-  
+ 
+def import_module( module_name ):
+  module_list = module_name.split('.')
+  module = __import__( module_name )
+  if len(module_list) > 1:
+    for mod_name in module_list[1:]:
+      try:
+        module = getattr( module, mod_name )
+      except AttributeError, ae:
+        #print "Module %s has no submodule named %s" % (str(module), mod_name)
+        raise ae
+  return module 
 
