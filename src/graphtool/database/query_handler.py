@@ -2,12 +2,6 @@ from graphtool.base.xml_config import XmlConfig
 from graphtool.tools.common import to_timestamp
 import types, cStringIO, array, datetime, re
 
-class ExtDict( dict ):
-  pass
-
-class ExtList( list ):
-  pass
-
 class QueryHandler( ObjectIterator ):
 
   def list( self, *args, **kw ):
@@ -106,6 +100,7 @@ def adjust_time( mytime, **kw ):
   return datetime.datetime.utcfromtimestamp( timestamp )
 
 def results_parser( sql_results, pivots="0,1", grouping="2", results="3", pivot_transform="echo", grouping_transform="echo", globals=globals(), suppress_zeros=True, **kw ): 
+    metadata = {}
     pivot_cols = [int(i.strip()) for i in pivots.split(',')]
     grouping_cols = [int(i.strip()) for i in grouping.split(',')]
     results_cols = [int(i.strip()) for i in results.split(',')]
@@ -131,8 +126,8 @@ def results_parser( sql_results, pivots="0,1", grouping="2", results="3", pivot_
       else:
         parsed_results[my_pivot][my_group] = new_data( row, results_cols, len_results_cols )
 
-    filtered_results = ExtDict()
-    filtered_results.kind = 'pivot-group'
+    filtered_results = {}
+    metadata['kind'] = 'pivot-group'
 
     for pivot in parsed_results.keys():
       data = parsed_results[pivot]
@@ -146,10 +141,10 @@ def results_parser( sql_results, pivots="0,1", grouping="2", results="3", pivot_
       if pivot_has_nonzero:
         filtered_results[pivot] = tmp_group
 
-    return filtered_results
+    return filtered_results, metadata
 
 def cumulative_pivot_group_parser( sql_results, pivots="0,1", grouping="2", results="3", pivot_transform="echo", grouping_transform="echo", globals=globals(), suppress_zeros=True, **kw ):
-
+    metadata = {}
     pivot_cols = [int(i.strip()) for i in pivots.split(',')]
     grouping_cols = [int(i.strip()) for i in grouping.split(',')]
     results_cols = [int(i.strip()) for i in results.split(',')]
@@ -196,9 +191,9 @@ def cumulative_pivot_group_parser( sql_results, pivots="0,1", grouping="2", resu
       else:
         parsed_results[my_pivot][my_group] = new_data( row, results_cols, len_results_cols )
 
-    filtered_results = ExtDict()
-    filtered_results.kind = 'pivot-group'
-    filtered_results.is_cumulative= True
+    filtered_results = {}
+    metadata['kind'] = 'pivot-group'
+    metadata['is_cumulative'] = True
 
     for pivot in parsed_results.keys():
       data = parsed_results[pivot]
@@ -217,7 +212,7 @@ def cumulative_pivot_group_parser( sql_results, pivots="0,1", grouping="2", resu
 
     results = filtered_results
 
-    filtered_results = ExtDict(); filtered_results.kind = 'pivot-group'
+    filtered_results = {};
 
     current_group = groups.pop(0)
     csum = {}
@@ -231,7 +226,6 @@ def cumulative_pivot_group_parser( sql_results, pivots="0,1", grouping="2", resu
           csum[ pivot ] += float(results[pivot][current_group])
         filtered_results[pivot][current_group] = csum[ pivot ]
 
-    #add_cumulative_data( current_group )
     while len(groups) > 0:
       next_group = groups[0]
       add_cumulative_data( current_group )
@@ -241,9 +235,7 @@ def cumulative_pivot_group_parser( sql_results, pivots="0,1", grouping="2", resu
       current_group = groups.pop(0)
     add_cumulative_data( current_group )
 
-    filtered_results.is_cumulative = True
-
-    return filtered_results
+    return filtered_results, metadata
 
 
 def simple_results_parser( sql_results, pivots="0", results="1", pivot_transform="echo", globals=globals(), suppress_zeros=True, **kw ): 
@@ -265,18 +257,19 @@ def simple_results_parser( sql_results, pivots="0", results="1", pivot_transform
       else:
         parsed_results[my_pivot] = new_data( row, results_cols, len_results_cols )
 
-    filtered_results = ExtDict( )
+    filtered_results = {}
 
     for pivot, info in parsed_results.items():
       info = check_tuple( info, len_results_cols )
       if has_nonzero( info, len_results_cols ):
         filtered_results[ pivot ] = info
 
-    filtered_results.kind = 'pivot'
+    metadata['kind'] = 'pivot'
 
-    return filtered_results
+    return filtered_results, metadata
 
 def complex_pivot_parser( sql_results, pivots="0", results="1", pivot_transform="echo", globals=globals(), suppress_zeros=True, **kw ):
+    metadata = {}
     pivot_cols = [int(i.strip()) for i in pivots.split(',')]
     results_cols = [int(i.strip()) for i in results.split(',')]
     len_results_cols = len(results_cols)
@@ -292,14 +285,14 @@ def complex_pivot_parser( sql_results, pivots="0", results="1", pivot_transform=
       if my_pivot == None: continue
       parsed_results.append( (my_pivot, new_data( row, results_cols, len_results_cols )) )
 
-    filtered_results = ExtList( )
+    filtered_results = []
 
     for pivot, info in parsed_results:
       info = check_tuple( info, len_results_cols )
       if has_nonzero( info, len_results_cols ):
         filtered_results.append( (pivot,info) )
 
-    filtered_results.kind = 'complex-pivot'
+    metadata['kind'] = 'complex-pivot'
 
-    return filtered_results
+    return filtered_results, metadata
 

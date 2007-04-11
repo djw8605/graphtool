@@ -16,6 +16,9 @@ class SqlQueries( DatabaseInfoV2 ):
 
   def parse_dom( self ):
     super( SqlQueries, self ).parse_dom()
+    self.default_query_class = self.dom.getAttribute('default_query_class')
+    if self.default_query_class == None or len(self.default_query_class) == 0:
+      self.default_query_class = 'SqlQuery'
     self.name = self.dom.getAttribute('name')
     for agg in self.dom.getElementsByTagName('aggregate'):
       self.parse_agg( agg )
@@ -35,7 +38,7 @@ class SqlQueries( DatabaseInfoV2 ):
   def parse_query( self, query_dom ):
     query_class_name = query_dom.getAttribute('class')
     if query_class_name == None or len(query_class_name) == 0:
-      query_class_name = 'SqlQuery'
+      query_class_name = self.default_query_class
 
     query_class = globals()[ query_class_name ]
 
@@ -74,16 +77,12 @@ class SqlQuery( XmlConfig ):
     inputs_dom = [ i for i in inputs_dom if i in query_dom.childNodes ]
 
     if self.base == None: 
-      query = self.make_query( sql_string, inputs_dom, query_dom )
+      query, metadata = self.make_query( sql_string, inputs_dom, query_dom )
     else:
-      query = self.make_query_chain( sql_string, self.base, inputs_dom, query_dom )
-    query.name = name
-    query.sql = sql
-    query.self = self.queries_obj
-    self.query = query
-    self.sql = sql
-    self.name = name
-    self.self = self.queries_obj
+      query, metadata = self.make_query_chain( sql_string, self.base, inputs_dom, query_dom )
+    self.metadata['name'] = name
+    self.metadata['sql'] = sql
+    self.metadata['query'] = query
 
   def make_query_func( self, inputs, results_inputs, agg, sql_string, function ):
 
@@ -122,53 +121,48 @@ class SqlQuery( XmlConfig ):
           sem.acquire()
           sem_count += 1
       vars['globals'] = self.globals 
-      results = function( results, **vars )
-      metadata = {}
-      for kw, val in self.metadata.items(): metadata[kw] = val 
-      for kw, val in self.metadata.items(): metadata[kw] = val
+      results, metadata = function( results, **vars )
+      for kw, val in self.metadata.items():
+        if kw not in metadata: metadata[kw] = val 
       metadata['query'] = self 
       metadata['given_kw'] = inputs.filter( my_kw )
       metadata['sql_vars'] = sql_vars
       return results, metadata
 
-    query.results = function
-    query.agg = agg
-    self.agg = agg
-    query.inputs = inputs
-    self.results = function
-    self.inputs = inputs
+    self.metadata['results'] = function
+    self.metadata['agg'] = agg
+    self.metadata['inputs'] = inputs
     return query
 
   def make_query_chain( self, sql_string, old_query, inputs_dom, query_dom ):
     results_dom = query_dom.getElementsByTagName('results')
     if len(results_dom)>0:
       results_inputs_dom  = results_dom[0].getElementsByTagName('inputs')
-      if old_query.results_inputs == None:
+      if old_query.metadata['results_inputs'] == None:
         results_inputs = Inputs( results_inputs_dom )
       else:
-        results_inputs = Inputs( results_inputs_dom, old_query.results_inputs )
-    elif old_query.results_inputs == None:
+        results_inputs = Inputs( results_inputs_dom, old_query.metadata['results_inputs'] )
+    elif old_query.metadata['results_inputs'] == None:
       raise Exception("No inputs for results set specified!")
     else:
-      results_inputs = old_query.results_inputs
+      results_inputs = old_query.metadata['results_inputs']
 
     if len(results_dom) > 0: function = self.find_function( results_dom[0] )
     else: function = None
-    if function == None: function = old_query.results
+    if function == None: function = old_query.metadata['results']
 
-    if self.queries_obj.agg == None and old_query.agg != None: agg = old_query.agg
+    if self.queries_obj.agg == None and old_query.metadata['agg'] != None: agg = old_query.metadata['agg']
     else: agg = self.queries_obj.agg
 
-    if old_query.inputs == None: inputs = Inputs( inputs_dom )
-    else: inputs = Inputs( inputs_dom, old_query.inputs )
+    if old_query.metadata['inputs'] == None: inputs = Inputs( inputs_dom )
+    else: inputs = Inputs( inputs_dom, old_query.metadata['inputs'] )
     query = self.make_query_func( inputs, results_inputs, agg, sql_string, function )
 
-    for name in old_query.__dict__.keys():
-      if name == 'queries_obj' or name == 'self': continue
-      setattr( query, name, getattr( old_query, name ) )
-      setattr( self,  name, getattr( old_query, name ) )
-    self.parse_attributes( query, query_dom )
-    self.parse_attributes( self, query_dom )
+    metadata = self.metadata
+    for name, item in old_query.metadata.items():
+      if name not in metadata:
+        metadata[name] = item
+    self.parse_attributes( self.metadata, query_dom )
     return query
 
   def find_function( self, result_dom ):
@@ -201,12 +195,10 @@ class SqlQuery( XmlConfig ):
 
     query = self.make_query_func( inputs, results_inputs, agg, sql_string, function )
  
-    query.inputs = inputs
-    query.results_inputs = results_inputs
-    self.inputs = inputs
-    self.results_inputs = results_inputs
-    self.parse_attributes( query, query_dom )
-    self.parse_attributes( self, query_dom )
+    self.metadata['inputs'] = inputs
+    self.metadata['results_inputs'] = results_inputs
+    self.metadata['inputs'] = inputs
+    parse_attributes( self.metadata, query_dom )
     return query
       
   def parse_base( self, query_dom ):

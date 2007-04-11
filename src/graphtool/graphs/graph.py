@@ -72,7 +72,7 @@ class Grapher( Cache,QueryHandler ):
   def __init__( self, *args, **kw ):
     super( Grapher, self ).__init__( *args, **kw )
     for query in self.query_objs:
-      query.grapher = self
+      query.metadata['grapher'] = self
 
   def get_coords( self, query, **kw ):
     hash_str = self.make_hash_str( query, **kw )
@@ -84,7 +84,7 @@ class Grapher( Cache,QueryHandler ):
     else:
       return None
 
-  def pre_query( self, query, *args, **kw ):
+  def pre_command( self, query, *args, **kw ):
     hash_str = self.make_hash_str( query, **kw )
     results = self.check_cache( hash_str )
     if results: return results[1]

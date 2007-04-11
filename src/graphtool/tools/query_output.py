@@ -4,118 +4,17 @@ from graphtool.tools.common import expand_string, to_timestamp
 from xml.sax.saxutils import XMLGenerator
 import types, cStringIO, datetime, traceback
 
-class ExtDict( dict ):
-  pass
-
-class QueryPrinter( QueryHandler ):
-  """ Prints the results of a certain query.""" 
-
-  def handle_query( self, results, *args, **kw ):
-    out = cStringIO.StringIO()
-    if len(results) > 0:
-      #print >> out, "\nResults of query %s." % results.query.name
-      print >> out, "\n", expand_string( results.query.title, results.sql_vars ).upper(), "\n"
-      print >> out, "SQL USED:", str(results.query.sql)
-      print >> out, "SQL VARS:"
-      self.print_sql_vars( results, out )
-      print >> out, "\n", "RESULTS:", '\n' 
-    else:
-      print >> out, "\nQuery has no results!\n"
-    if results.kind == 'pivot-group':
-      self.print_pivot_group_query( results, out )
-    elif results.kind == 'pivot':
-      self.print_pivot_query( results, out )
-    else:
-      print >> out, "\nUnknown query type!\n" 
-    print out.getvalue()
-    return out.getvalue()
-
-  def print_sql_vars( self, results, out ):
-    for var, val in results.sql_vars.items():
-      print >> out, " - %s: %s" % (var, str(val))
-
-  def print_pivot_group_query( self, results, out ):
-    pivot_name = results.pivot_name
-    units = []
-    for unit in results.query.column_units.split(','):
-      unit = unit.strip()
-      units.append( unit )
-    for pivot in results.keys():
-      if len(results[pivot].keys()) > 0:
-        first_item = results[pivot].values()[0]
-        can_add = True; is_tuple = False
-        if types.TupleType == type( first_item ):
-          is_tuple = True 
-          for result in first_item:
-            if types.StringType == type(result): can_add = False
-          cumulative_results = [0,] * len(first_item)
-        else:
-          if types.StringType == type( first_item ): can_add = False
-          cumulative_results = 0
-        if can_add == True: 
-          for grouping in results[pivot].keys():
-            if is_tuple:
-              for idx in range(len(results[pivot][grouping])):
-                cumulative_results[idx] += results[pivot][grouping][idx]
-            else:
-              cumulative_results += results[pivot][grouping] 
-        if is_tuple:  
-          print >> out, " * %s %s (Total: %s)\n" % (pivot_name, str(pivot), str(cumulative_results))
-        else:
-          print >> out, " * %s %s (Total: %.3f %s)\n" % (pivot_name, str(pivot), float(cumulative_results), units[0])
-      if len(results[pivot].keys()) == 0 or can_add == False:
-        print >> out, " * Pivot %s\n" % str(pivot)
-      for grouping in results[pivot].keys():
-        if is_tuple:
-          print >> out, "   - %s: %s" % (grouping, results[pivot][grouping])
-        else:
-          print >> out, "   - %s: %.3f %s" % (grouping, float(results[pivot][grouping]), units[0])
-      print >> out, ""
-
-  def print_pivot_query( self, results, out ):
-    pivot_name = results.pivot_name
-    units = []; columns = []
-    for unit in results.query.column_units.split(','):
-      unit = unit.strip()
-      units.append( unit )
-    for column in results.query.column_names.split(','):
-      columns.append( column.strip() )
-    column_header_len = len(columns); column_units_len = len(units)
-    for pivot, data in results.items():
-      out.write( " * Pivot: %s, " % str(pivot) )
-      if type(data) == types.TupleType:
-        out.write( "\n" )
-        for idx in range(len(data)):
-          out.write( "   - " )
-          if idx < column_header_len:
-            out.write( "%s: " % columns[idx] )
-          out.write( str(data[idx]) )
-          if idx < column_units_len:
-            out.write( " " + str(units[idx]) )
-          out.write( "\n" )
-      else:
-        if column_header_len > 0:
-          out.write( "%s: %s" % (columns[0], str(data)) )
-        if column_units_len > 0:
-          out.write( " " + units[0] )
-        out.write( "\n" )
-      out.write( "\n" )
-
-  def handle_list( self, *args, **kw ):
-    return self.list_queries()
-
 class XmlGenerator( QueryHandler ):
 
-  def handle_query( self, results, **kw ):
-    query = results.query
+  def handle_query( self, results, metadata, **kw ):
     output = cStringIO.StringIO()
-    gen = self.startPlot( output, results, query )
+    gen = self.startPlot( output, results, metadata )
     if results.kind == 'pivot-group':
-      self.addResults_pg( results, query, gen )
+      self.addResults_pg( results, metadata, gen )
     elif results.kind == 'pivot':
-      self.addResults_p( results, query, gen )
+      self.addResults_p( results, metadata, gen )
     elif results.kind == 'complex-pivot':
-      self.addResults_c_p( results, query, gen )
+      self.addResults_c_p( results, metadata, gen )
     self.endPlot( gen )
     return output.getvalue()
 
@@ -159,56 +58,58 @@ class XmlGenerator( QueryHandler ):
     gen.characters("\n\t")
     return gen
 
-  def startPlot( self, output, results, query, encoding='UTF-8' ):
+  def startPlot( self, output, results, metadata, encoding='UTF-8' ):
     gen = self.startDocument( output, encoding )
     query_attrs = {}
-    name = query.name
+    name = metadata.get('name','')
     if name and len(name) > 0:
       query_attrs['name'] = name
     gen.startElement('query', query_attrs)
     gen.characters("\n\t\t")
-    title = expand_string( query.title, results.sql_vars )
+    title = expand_string( metadata.get('title',''), metadata.get('sql_vars','') )
     if title and len(title) > 0:
       gen.startElement('title',{})
       gen.characters( title )
       gen.endElement( 'title' )
       gen.characters("\n\t\t")
-    graph_type = query.graph_type
+    graph_type = metadata['graph_type']
     if graph_type and len(graph_type) > 0:
       gen.startElement( 'graph',{} )
       gen.characters( graph_type )
       gen.endElement( 'graph' )
       gen.characters("\n\t\t")
-    sql_string = str(query.sql)
+    sql_string = str(metadata['sql'])
     gen.startElement( 'sql',{} )
     gen.characters( sql_string )
     gen.characters("\n\t\t")
     gen.endElement( 'sql' )
     gen.characters("\n\t\t")
-    self.write_sql_vars( results, query, gen )
+    self.write_sql_vars( results, metadata, gen )
     gen.characters("\n\t\t")
-    base_url = '/graphs'
+    base_url = None
     try:
-      if 'grapher' in query.self.__dict__.keys():
-        graphs = query.self.grapher
-      if 'base_url' in graphs.__dict__:
-        base_url = graphs.base_url
+      if 'grapher' in metadata:
+        graphs = metadata['grapher']
+      if 'base_url' in graphs.metadata:
+        base_url = graphs.metadata['base_url']
     except Exception, e:
       pass
-    self.write_graph_url( results, query, gen, base_url=base_url )
+    self.write_graph_url( results, metadata, gen, base_url=base_url )
     return gen
 
-  def write_graph_url( self, results, query, gen, base_url = '/graphs' ):
-    base = base_url + '/' + query.name + '?'
-    for key in results.given_kw.keys():
-      base += str(key) + '=' + str(results.given_kw[key]) + '&'
-    gen.startElement("url",{})
-    gen.characters( base )
-    gen.endElement("url")
+  def write_graph_url( self, results, metadata, gen, base_url=None ):
+    if base_url != None:
+      base = base_url + '/' + metadata.get('name','') + '?'
+      kw = metadata.get('given_kw',{})
+      for key, item in kw.items():
+        base += str(key) + '=' + str(item) + '&'
+      gen.startElement("url",{})
+      gen.characters( base )
+      gen.endElement("url")
 
-  def write_sql_vars( self, data, query, gen ):
-    sql_vars = data.sql_vars
-    for key, item in data.given_kw.items():
+  def write_sql_vars( self, data, metadata, gen ):
+    sql_vars = metadata['sql_vars']
+    for key, item in metadata['given_kw'].items():
       sql_vars[key] = item
     gen.startElement( 'sqlvars', {} )
     for var in sql_vars:
@@ -230,9 +131,11 @@ class XmlGenerator( QueryHandler ):
     gen.characters("\n")
     gen.endDocument()
 
-  def write_columns( self, query, gen ):
-    names = [ i.strip() for i in query.column_names.split(',') ]
-    units = [ i.strip() for i in query.column_units.split(',') ]
+  def write_columns( self, metadata, gen ):
+    column_names = str(metadata.get('column_names',''))
+    column_units = str(metadata.get('column_units',''))
+    names = [ i.strip() for i in column_names.split(',') ]
+    units = [ i.strip() for i in column_units.split(',') ]
     columns = {}
     num_columns = min(len(names),len(units))
     for idx in range(num_columns):
@@ -250,28 +153,27 @@ class XmlGenerator( QueryHandler ):
       gen.endElement('columns')
       gen.characters("\n\t\t")
 
-  def addResults_pg( self, data, query, gen, **kw ):
+  def addResults_pg( self, data, metadata, gen, **kw ):
 
     try:
-      if 'grapher' in query.self.__dict__.keys():
-        coords = query.self.grapher.get_coords( query, **data.given_kw )
+      if 'grapher' in metadata:
+        coords = metadata['grapher'].get_coords( metadata['name'], **metadata['given_kw'] )
       else: coords = None
     except Exception, e:
-      #traceback.print_tb()
       coords = None
 
     attrs = {'kind':'pivot-group'}
     pivot_name = str(data.pivot_name)
     if pivot_name and len(pivot_name) > 0:
-      attrs['pivot'] = pivot_name
-    grouping_name = str(query.grouping_name)
+      attrs['pivot'] = pivot
+    grouping_name = str(metadata.get('grouping_name',''))
     if grouping_name and len(grouping_name) > 0:
       attrs['group'] = grouping_name
     if coords:
       attrs['coords'] = 'True'
     else:
       attrs['coords'] = 'False'
-    self.write_columns( query, gen )
+    self.write_columns( metadata, gen )
     gen.startElement('data',attrs)
 
     for pivot in data.keys():
@@ -299,16 +201,16 @@ class XmlGenerator( QueryHandler ):
     gen.endElement('data')
     gen.characters("\n\t")
 
-  def addResults_p( self, data, query, gen, **kw ):
+  def addResults_p( self, data, metadata, gen, **kw ):
 
+    coords = None
     try:
-      coords = query.self.grapher.get_coords( query, **data.given_kw )
-    except Exception, e:
-      #print e
-      coords = None
+      if ('grapher' in metadata) and ('name' in metadata):
+        coords = metadata['grapher'].get_coords( metadata['name'], **metadata.get('given_kw',{}) )
+    except Exception, e: pass
 
     attrs = {'kind':'pivot'}
-    pivot_name = str(data.pivot_name)
+    pivot_name = str(metadata.get('pivot_name',''))
     if pivot_name and len(pivot_name) > 0:
       attrs['pivot'] = pivot_name
     if coords:
@@ -316,7 +218,7 @@ class XmlGenerator( QueryHandler ):
     else:
       attrs['coords'] = 'False'
 
-    self.write_columns( query, gen )
+    self.write_columns( metadata, gen )
     gen.startElement('data',attrs)
     for pivot in data.keys():
       gen.characters("\n\t\t\t")
@@ -330,12 +232,12 @@ class XmlGenerator( QueryHandler ):
     gen.endElement('data')
     gen.characters("\n\t")
 
-  def addResults_c_p( self, data, query, gen, **kw ):
+  def addResults_c_p( self, data, metadata, gen, **kw ):
     attrs = {'kind':'pivot'}
-    pivot_name = str(data.pivot_name)
+    pivot_name = str(metadata.get('pivot_name',''))
     if pivot_name and len(pivot_name) > 0:
       attrs['pivot'] = pivot_name
-    self.write_columns( query, gen )
+    self.write_columns( metadata, gen )
     gen.startElement('data',attrs)
     for pivot, info in data:
       gen.characters("\n\t\t\t")
@@ -355,11 +257,12 @@ class XmlGenerator( QueryHandler ):
       grouping_attrs['value'] = str(grouping)
     return grouping_attrs
 
+  #TODO: make this more generic!  Built in change for Phedex link.
   def pivotName( self, pivot, attrs ):
     if attrs['pivot'] == 'Link':
       return 'link', {'from':pivot[0],'to':pivot[1]}
     else:
-      return attrs['pivot'].lower().strip(),{'name':str(pivot)}
+      return 'pivot',{'name':str(pivot)}
 
   def addData( self, data, gen, coords=None, **kw ):
         if type(data) != types.TupleType:
