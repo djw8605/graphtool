@@ -1,9 +1,10 @@
 
 # System imports
-import threading
+import threading, urllib
 
 # GraphTool imports
 from graphtool.base.xml_config import XmlConfig 
+from graphtool.database.queries import Inputs
 
 # 4Suite imports
 from Ft.Xml.Xslt import Processor
@@ -102,21 +103,48 @@ class XmlQuery( XmlConfig ):
     inputs_dom = query_dom.getElementsByTagName('inputs')
     inputs_dom = [ i for i in inputs_dom if i in query_dom.childNodes ]
 
-    function = 
+    results_dom = query_dom.getElementsByTagName('results')[0]
+    results_inputs_dom = results_dom.getElementsByTagName('inputs')
+
+    self.function = self.find_function( results_dom )
+
+    inputs = Inputs( inputs_dom )
+
+    results_inputs = Inputs( results_inputs_dom )
 
     self.metadata['target_url'] = target 
     self.metadata['xsl'] = xsl 
+    self.metadata['inputs'] = inputs
+    self.metadata['results_inputs'] = results_inputs
+    parse_attributes( self.metadata, query_dom )
 
-  def query( *args, **my_kw ):
-    sql_vars = inputs.filter_sql( my_kw )
-    vars = results_inputs.filter( my_kw )
-    vars = inputs.filter( vars )
-    # Convert vars to a query string.
+  def find_function( self, result_dom ):
+    modname = result_dom.getAttribute('module')
+    funcname = result_dom.getAttribute('function')
+    if modname == '' and funcname == '':
+      return None
+    elif modname == '':
+      function = self.globals[funcname]
+    else:
+      module = import_module( modname )
+      try:
+        function = getattr( module, funcname )
+      except Exception, e:
+        raise Exception( "\nCould not import %s from %s; exception follows.\n%s" % (funcname, modname, str(e)) )
+
+    return function
+
+  def query( self, *args, **my_kw ):
+    sql_vars = self.metadata['inputs'].filter_sql( my_kw )
+    vars = self.metadata['results_inputs'].filter( my_kw )
+    vars = self.metadata['inputs'].filter( vars )
+    url = target_url + '?' + urllib.urlencode( sql_vars )
     self.processor_lock.acquire()
     try:
-      results = self.queries_obj.parse_query_results( sql_string )
+      xml_string = self.processor.run( url )
     finally:
       self.processor_lock.release()
+    results = self.queries_obj.parse_query_results( xml_string )
     vars['globals'] = self.globals
     results, metadata = function( results, **vars )
     for kw, val in self.metadata.items():

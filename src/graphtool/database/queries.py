@@ -197,7 +197,6 @@ class SqlQuery( XmlConfig ):
  
     self.metadata['inputs'] = inputs
     self.metadata['results_inputs'] = results_inputs
-    self.metadata['inputs'] = inputs
     parse_attributes( self.metadata, query_dom )
     return query
       
