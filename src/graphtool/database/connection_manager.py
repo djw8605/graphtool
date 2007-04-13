@@ -1,7 +1,7 @@
 from graphtool.tools.common import to_timestamp
 from graphtool.tools.cache import Cache
 from graphtool.base.xml_config import XmlConfig
-import threading, cStringIO, traceback, os
+import threading, cStringIO, traceback, os, time
 
 try:  
   import cx_Oracle
@@ -175,16 +175,21 @@ class OracleDatabase( DBConnection ):
 
   def _execute_statement( self, statement, vars={} ):
     curs = self.get_cursor()
+    print "About to execute", time.time()
     curs.arraysize = 500
     curs.prepare( statement )
+    print "Finished prepare", time.time()
     curs.execute( statement, vars )
+    print "Executing", time.time()
     rows = curs.fetchall()
+    print "Fetched", time.time()
     self.release_cursor( curs )
+    print "Finished statement execute"
     return rows
 
 class MySqlDatabase( DBConnection ):
 
-  pool_size = 5
+  pool_size = 25
 
   def __init__( self, *args, **kw ):
     super( MySqlDatabase, self ).__init__( *args, **kw )
@@ -233,18 +238,20 @@ class MySqlDatabase( DBConnection ):
   def get_connection( self ):
     self.conn_sema.acquire()
     self.conn_lock.acquire()
-    for i in range( self.pool_size ):
-      if self._conn_use[i] == False:
-        # Get connection, save it to self._conn[i]
-        if self.test_connection( i ):
-          self._conn_use[ i ] = True
-          conn = self._conns[ i ]
-        else:
-          conn = self.make_connection()
-          self._conn_use[ i ] = True
-          self._conns[ i ] = conn
-        break 
-    self.conn_lock.release()
+    try:
+      for i in range( self.pool_size ):
+        if self._conn_use[i] == False:
+          # Get connection, save it to self._conn[i]
+          if self.test_connection( i ):
+            self._conn_use[ i ] = True
+            conn = self._conns[ i ]
+          else:
+            conn = self.make_connection()
+            self._conn_use[ i ] = True
+            self._conns[ i ] = conn
+          break 
+    finally:
+      self.conn_lock.release()
     return conn
 
   def get_cursor( self ):
@@ -259,17 +266,17 @@ class MySqlDatabase( DBConnection ):
     
   def release_connection( self, conn ):
     self.conn_lock.acquire()
-    self.conn_sema.release()
-    i = -1
-    for i in range(self.pool_size):
-      if self._conns[ i ] == conn:
-        break
-    self._conn_use[i] = False
-    self.conn_lock.release()
+    try:
+      self.conn_sema.release()
+      i = -1
+      for i in range(self.pool_size):
+        if self._conns[ i ] == conn:
+          break
+      self._conn_use[i] = False
+    finally:
+      self.conn_lock.release()
   
   def _execute_statement( self, sql_string, sql_vars ):
-    curs = self.get_cursor()
-    curs.arraysize = 500
     my_string = str( sql_string )
     placement_dict = {}
     for var_name in sql_vars.keys():
@@ -284,13 +291,13 @@ class MySqlDatabase( DBConnection ):
     my_tuple = ()
     for place in places:
       my_tuple += (sql_vars[placement_dict[place]],)
+    curs = self.get_cursor()
     try:
+      curs.arraysize = 500
       curs.execute( my_string, my_tuple )
       results = curs.fetchall()
-    except Exception, e:
+    finally:
       self.release_cursor( curs )
-      raise e
-    self.release_cursor( curs )
     return results
 
 class SqliteDatabase( DBConnection ):
