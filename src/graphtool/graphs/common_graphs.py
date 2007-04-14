@@ -26,7 +26,7 @@ class BarGraph( PivotGraph ):
     tmp_x = []; tmp_y = []
     if is_str: counter = 0
     num_bars = len( keys )
-    width = (1 - bar_graph_space) * float(self.width) / 86400.0 / num_bars
+    width = (1 - self.bar_graph_space) * float(self.width) / 86400.0 / num_bars
     offset = width*position + bar_graph_space / 2.0
     for pivot, data in results.items():
       if is_str:
