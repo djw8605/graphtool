@@ -512,7 +512,7 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
     results = self.parsed_data
     self.try_column =  int( self.metadata.pop('try_column',0)  ) 
     self.done_column = int( self.metadata.pop('done_column',1) )
-    self.fail_column = int( sefl.metadata.pop('fail_column',2) )
+    self.fail_column = int( self.metadata.pop('fail_column',2) )
 
     # Rearrange our data
     timebins = set()

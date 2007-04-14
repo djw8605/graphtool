@@ -175,9 +175,9 @@ class OracleDatabase( DBConnection ):
 
   def _execute_statement( self, statement, vars={} ):
     curs = self.get_cursor()
-    curs.arraysize = 1000
+    st = -time.time()
     #print "About to execute", time.time()
-    curs.arraysize = 500
+    curs.arraysize = 1000
     curs.prepare( statement )
     #print "Finished prepare", time.time()
     curs.execute( statement, vars )
@@ -186,6 +186,7 @@ class OracleDatabase( DBConnection ):
     #print "Fetched", time.time()
     self.release_cursor( curs )
     #print "Finished statement execute"
+    #print "Total time:", st + time.time()
     return rows
 
 class MySqlDatabase( DBConnection ):
