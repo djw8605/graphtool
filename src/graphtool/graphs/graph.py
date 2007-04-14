@@ -142,6 +142,9 @@ class Graph( object ):
     super( Graph, self ).__init__( *args, **kw )
     self.sorted_keys = None
 
+  def __call__( *args, **kw ):
+    return run( *args, **kw )
+
   def run( self, results, file, metadata, **kw ):
     self.prefs = dict(prefs)
     self.kw = kw
