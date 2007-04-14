@@ -2,19 +2,22 @@
 from graphtool.database.query_handler import QueryHandler
 from graphtool.tools.common import expand_string, to_timestamp
 from xml.sax.saxutils import XMLGenerator
-import types, cStringIO, datetime, traceback
+import types, cStringIO, datetime, traceback, sys
 
 class XmlGenerator( QueryHandler ):
 
-  def handle_query( self, results, metadata, **kw ):
+  def handle_results( self, results, metadata, **kw ):
     output = cStringIO.StringIO()
     gen = self.startPlot( output, results, metadata )
-    if results.kind == 'pivot-group':
+    kind = metadata.get('kind','Type not specified!')
+    if kind == 'pivot-group':
       self.addResults_pg( results, metadata, gen )
-    elif results.kind == 'pivot':
+    elif kind == 'pivot':
       self.addResults_p( results, metadata, gen )
-    elif results.kind == 'complex-pivot':
+    elif kind == 'complex-pivot':
       self.addResults_c_p( results, metadata, gen )
+    else:
+      raise Exception("Unknown data type! (%s)" % kind) 
     self.endPlot( gen )
     return output.getvalue()
 
@@ -27,7 +30,7 @@ class XmlGenerator( QueryHandler ):
       if base_url[-1] != '/':
         base_url += '/'
     i = 0
-    for query_obj in self.query_objs:
+    for query_obj in self.objs:
       i += 1
       if 'display_name' in query_obj.__dict__:
         name = query_obj.display_name
@@ -87,13 +90,17 @@ class XmlGenerator( QueryHandler ):
     self.write_sql_vars( results, metadata, gen )
     gen.characters("\n\t\t")
     base_url = None
-    try:
-      if 'grapher' in metadata:
-        graphs = metadata['grapher']
-      if 'base_url' in graphs.metadata:
+    graphs = metadata.get('grapher',None)
+    if graphs and 'base_url' in graphs.metadata:
         base_url = graphs.metadata['base_url']
-    except Exception, e:
-      pass
+    else:
+      print "Base URL not specified!"
+      print metadata
+      if graphs:
+        print graphs.metadata
+      else:
+        print "Graphs not specified"
+      pass 
     self.write_graph_url( results, metadata, gen, base_url=base_url )
     return gen
 
@@ -157,15 +164,17 @@ class XmlGenerator( QueryHandler ):
 
     try:
       if 'grapher' in metadata:
-        coords = metadata['grapher'].get_coords( metadata['name'], **metadata['given_kw'] )
+        coords = metadata['grapher'].get_coords( metadata['query'], metadata, **metadata['given_kw'] )
       else: coords = None
-    except Exception, e:
+    except Exception, e: 
+      print e
+      traceback.print_exc( sys.stdout )
       coords = None
 
     attrs = {'kind':'pivot-group'}
-    pivot_name = str(data.pivot_name)
+    pivot_name = str(metadata['pivot_name'])
     if pivot_name and len(pivot_name) > 0:
-      attrs['pivot'] = pivot
+      attrs['pivot'] = pivot_name
     grouping_name = str(metadata.get('grouping_name',''))
     if grouping_name and len(grouping_name) > 0:
       attrs['group'] = grouping_name
@@ -206,7 +215,7 @@ class XmlGenerator( QueryHandler ):
     coords = None
     try:
       if ('grapher' in metadata) and ('name' in metadata):
-        coords = metadata['grapher'].get_coords( metadata['name'], **metadata.get('given_kw',{}) )
+        coords = metadata['grapher'].get_coords( metadata['query'], metadata, **metadata.get('given_kw',{}) )
     except Exception, e: pass
 
     attrs = {'kind':'pivot'}

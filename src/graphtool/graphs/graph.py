@@ -61,7 +61,7 @@ def draw_empty( text, file, kw ):
 
 def find_info( attr, kw, metadata ):
   str_attr = str(attr)
-  return kw.pop( str_attr, metadata.pop( str_attr, '' ) )
+  return kw.get( str_attr, metadata.get( str_attr, '' ) )
 
 class Grapher( Cache,QueryHandler ):
 
@@ -71,13 +71,15 @@ class Grapher( Cache,QueryHandler ):
 
   def __init__( self, *args, **kw ):
     super( Grapher, self ).__init__( *args, **kw )
-    for query in self.query_objs:
+    for query in self.objs:
+      query.metadata['grapher'] = self
+    for query in self.known_commands.values():
       query.metadata['grapher'] = self
 
-  def get_coords( self, query, **kw ):
+  def get_coords( self, query, metadata, **kw ):
     hash_str = self.make_hash_str( query, **kw )
 
-    graph = self.do_graph( query, True, **kw )
+    graph = self.do_graph( query, metadata, True, **kw )
     cache_data = self.check_cache( hash_str )
     if cache_data:
       return cache_data[0]
@@ -94,7 +96,7 @@ class Grapher( Cache,QueryHandler ):
 
   def do_graph( self, obj, metadata, is_query=False, **kw ):
     if is_query: query = obj
-    else: query = obj.query
+    else: query = metadata['query']
     hash_str = self.make_hash_str( query, **kw )
 
     graphing_lock = self.check_and_add_progress( hash_str )
@@ -438,14 +440,16 @@ class DBGraph( Graph ):
 
     results = self.results; metadata = self.metadata
     kw = dict( self.kw )
-    self.vars = metadata.pop('sql_vars',{})
+    self.vars = metadata.get('sql_vars',{})
     self.title = getattr( self, 'title', find_info('title', kw, metadata ) )
-    column_names = find_info( 'column_names', kw, metadata ); column_units = find_info( 'columns_units', kw, metadata )
+    column_names = find_info( 'column_names', kw, metadata )
+    column_units = find_info( 'column_units', kw, metadata )
     if len(str(column_units)) > 0:
       self.ylabel = "%s [%s]" % (column_names, column_units)
     else:
       self.ylabel = str(column_names)
-    if 'grouping_name' in metadata:
+    self.xlabel = find_info( 'grouping_name', kw, metadata )
+    if len(self.xlabel) == 0:
       self.xlabel = find_info( 'xlabel', kw, metadata )
     self.kind  = find_info( 'pivot_name', kw, metadata )
     self.title = expand_string( self.title, self.vars )
@@ -601,8 +605,8 @@ class TimeGraph( DBGraph ):
           begin = min( timebin, begin )
           end = max( timebin, end )
     else:
-      begin = to_timestamp(vars.pop('starttime', time.time()-24*3600))
-      end = to_timestamp(vars.pop('endtime',time.time()))
+      begin = to_timestamp(vars.get('starttime', time.time()-24*3600))
+      end = to_timestamp(vars.get('endtime',time.time()))
 
     self.begin = begin; self.end = end
     self.begin_datetime = datetime.datetime.utcfromtimestamp( float(begin) )
@@ -610,7 +614,7 @@ class TimeGraph( DBGraph ):
     self.begin_num = date2num( self.begin_datetime )
     self.end_num   = date2num( self.end_datetime   )
 
-    self.width = vars.pop('span', self.time_interval() ) 
+    self.width = vars.get('span', self.time_interval() ) 
 
     title = getattr( self, 'title', '' )
     self.title = self.add_time_to_title( title )

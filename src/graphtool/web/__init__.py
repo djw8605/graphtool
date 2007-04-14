@@ -36,7 +36,7 @@ class WebHost( XmlConfig ):
     for instance_dom in mount_dom.getElementsByTagName('instance'):
       instance = classes[instance_dom.getAttribute('name')]
     self.mount_instance( instance, location, content )
-    instance.base_url = location
+    instance.metadata['base_url'] = location
 
   def wrap_function( self, func, content ):
     def content_func( *args, **kw ):

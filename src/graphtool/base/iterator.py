@@ -14,26 +14,30 @@ class ObjectIterator( XmlConfig ):
 
   def __init__( self, *args, **kw ):
     self.known_commands = {}
+    self.tag_name = self.__dict__.get('tag_name','obj')
     super( ObjectIterator, self ).__init__( *args, **kw )  
 
   def parse_dom( self ):
     super( ObjectIterator, self ).parse_dom()
     classes = self.find_classes( must_be_executable=False )
-    for obj_dom in self.dom.getElementsByTagName('obj'):
+    self.objs = []
+    for obj_dom in self.dom.getElementsByTagName(self.tag_name):
       text_node = obj_dom.firstChild
       if text_node.nodeType != text_node.TEXT_NODE: continue
       text = str( text_node.data.strip() )
       if not (text in classes.keys()):
         continue
       obj = classes[text]
-      if isinstance( query_obj, ObjectIterator ):
-        command_dict = query_obj.known_commands
+      self.objs.append( obj )
+      if isinstance( obj, ObjectIterator ):
+        command_dict = obj.known_commands
       else:
-        command_dict = query_obj.commands
+        command_dict = obj.commands
       for query, method_name in command_dict.items():
-        self.known_commands[query] = getattr( query_obj, method_name )
+        self.known_commands[query] = getattr(obj, method_name )
 
-  def handle_results( results, metadata, **kw ):
+
+  def handle_results( self, results, metadata, **kw ):
     return results, metadata
 
   def handle_args( self, *args, **kw ):
@@ -56,7 +60,7 @@ class ObjectIterator( XmlConfig ):
       self.handle_list( *args, **kw )
       raise Exception( "Command name %s not known" % cmd_name )
     cmd_args, kw = self.handle_args( *cmd_args, **kw )
-    pre_results = self.pre_command( query_func, *query_args, **kw )
+    pre_results = self.pre_command( cmd_func, *cmd_args, **kw )
     if pre_results:
       return pre_results
     results, metadata = cmd_func( *cmd_args, **kw )

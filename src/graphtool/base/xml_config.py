@@ -1,6 +1,6 @@
 
 from graphtool.base import GraphToolInfo
-from graphtool.common.tools import import_module
+from graphtool.tools.common import import_module
 from xml.dom.minidom import parse
 import types, traceback, cStringIO
 

@@ -11,7 +11,6 @@ class SqlQueries( DatabaseInfoV2 ):
 
   def __init__( self, *args, **kw ):
     self.commands = {}
-    self.agg = None
     super( SqlQueries, self ).__init__( *args, **kw )
 
   def parse_dom( self ):
@@ -32,8 +31,8 @@ class SqlQueries( DatabaseInfoV2 ):
       textNode = conn_dom.firstChild
       assert textNode.nodeType == textNode.TEXT_NODE 
       name = str(textNode.data).strip()
-      if self.agg == None: self.agg = [ name ]
-      else: self.agg.append( name )
+      if self.metadata.get('agg',None) == None: self.metadata['agg'] = [ name ]
+      else: self.metadata['agg'].append( name )
 
   def parse_query( self, query_dom ):
     query_class_name = query_dom.getAttribute('class')
@@ -77,12 +76,13 @@ class SqlQuery( XmlConfig ):
     inputs_dom = [ i for i in inputs_dom if i in query_dom.childNodes ]
 
     if self.base == None: 
-      query, metadata = self.make_query( sql_string, inputs_dom, query_dom )
+      query = self.make_query( sql_string, inputs_dom, query_dom )
     else:
-      query, metadata = self.make_query_chain( sql_string, self.base, inputs_dom, query_dom )
+      query = self.make_query_chain( sql_string, self.base, inputs_dom, query_dom )
     self.metadata['name'] = name
     self.metadata['sql'] = sql
     self.metadata['query'] = query
+    self.query = query
 
   def make_query_func( self, inputs, results_inputs, agg, sql_string, function ):
 
@@ -149,10 +149,13 @@ class SqlQuery( XmlConfig ):
 
     if len(results_dom) > 0: function = self.find_function( results_dom[0] )
     else: function = None
-    if function == None: function = old_query.metadata['results']
+    if function == None:
+      function = old_query.metadata.get('results',None)
+    if function == None:
+      raise Exception( "Results parsing function not specified for chained query %s, and parent query %s doesn't specify it either." % (self.metadata.get('name',''),old_query.metadata.get('name','')))
 
-    if self.queries_obj.agg == None and old_query.metadata['agg'] != None: agg = old_query.metadata['agg']
-    else: agg = self.queries_obj.agg
+    if self.queries_obj.metadata.get('agg',None) == None and old_query.metadata.get('agg',None) != None: agg = old_query.metadata['agg']
+    else: agg = self.queries_obj.metadata.get('agg',None)
 
     if old_query.metadata['inputs'] == None: inputs = Inputs( inputs_dom )
     else: inputs = Inputs( inputs_dom, old_query.metadata['inputs'] )
@@ -191,13 +194,14 @@ class SqlQuery( XmlConfig ):
 
     results_inputs = Inputs( results_inputs_dom )
 
-    agg = self.queries_obj.agg
+    agg = self.queries_obj.metadata.get('agg',None)
 
     query = self.make_query_func( inputs, results_inputs, agg, sql_string, function )
  
+    self.metadata['results'] = function
     self.metadata['inputs'] = inputs
     self.metadata['results_inputs'] = results_inputs
-    parse_attributes( self.metadata, query_dom )
+    self.parse_attributes( self.metadata, query_dom )
     return query
       
   def parse_base( self, query_dom ):
@@ -234,66 +238,6 @@ class SqlQuery( XmlConfig ):
       return to_timestamp( string )
     else:
       return str( string )
-
-class SqlQueryPA( SqlQuery ):
-
-  def make_query_func( self, inputs, results_inputs, agg, sql_string, function ):
-  
-    def query( *args, **my_kw ):
-      sql_vars = inputs.filter_sql( my_kw )
-      vars = results_inputs.filter( my_kw )
-      vars = inputs.filter( vars )
-      class Context: pass
-      ctx = Context()
-      vars['query'] = ctx
-      if agg == None or 'conn' in vars.keys():
-        results = self.queries_obj.execute_sql( sql_string, sql_vars, **vars )
-      else:
-        results = []
-        result_lock = threading.Lock()
-        sem = threading.Semaphore( len(agg) )
-        class QueryThread( threading.Thread ):
-          def run( self ):
-            try:
-              my_results = self.sqlqueries.execute_sql( sql_string, sql_vars, conn=self.conn, **vars )
-              length = self.conn.find('_')
-              if length >= 0:
-                my_results = [ (self.conn[:length],) + row for row in my_results ]
-              else:
-                my_results = [ (self.conn,) + row for row in my_results ]
-              result_lock.acquire()
-              results.extend( my_results )
-              result_lock.release()
-              sem.release()
-            except Exception, e:
-              sem.release()
-              raise e
-        for conn in agg:
-          qt = QueryThread( )
-          qt.conn = conn
-          qt.sqlqueries = self.queries_obj
-          sem.acquire()
-          qt.start()
-        sem_count = 0
-        while sem_count != len(agg):
-          sem.acquire()
-          sem_count += 1
-      results = function( results, **vars )
-      for kw, val in self.__dict__.items(): setattr( results, kw, val )
-      for kw, val in ctx.__dict__.items(): setattr( results, kw, val )
-      results.query = self
-      results.given_kw = inputs.filter( my_kw )
-      results.sql_vars = sql_vars
-      return results
-
-    query.results = function
-    query.agg = agg
-    self.agg = agg
-    query.inputs = inputs
-    self.results = function
-    self.inputs = inputs
-    return query
-
 
 class Sql( XmlConfig ):
   
@@ -332,18 +276,16 @@ class Sql( XmlConfig ):
 
   def parse_chain_dom( self ):
     base_query = self.query.base
-    try:
-      base_query.sql
-    except AttributeError, ae:
+    base_sql = base_query.metadata.get('sql',None)
+    if base_sql == None:
       out = cStringIO.StringIO()
       print >> out, "Could not find chained object's SQL for %s" % self.dom.getAttribute('name')
       print >> out, "\n%s\n" % str(ae)
       print >> out, base_query
-      #print out.getvalue()
       raise Exception( out.getvalue() )
-    if type(base_query.sql) != Sql:
+    if type(base_sql) != Sql:
       raise Exception("Object's SQL is not of type Sql")
-    for piece in base_query.sql.pieces:
+    for piece in base_sql.pieces:
       if type(piece) == types.StringType:
         self.pieces.append( str(piece) )
       elif type(piece) == types.DictType:

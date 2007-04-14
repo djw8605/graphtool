@@ -1,8 +1,13 @@
 from graphtool.base.xml_config import XmlConfig
+from graphtool.base.iterator   import ObjectIterator
 from graphtool.tools.common import to_timestamp
 import types, cStringIO, array, datetime, re
 
 class QueryHandler( ObjectIterator ):
+
+  def __init__( self, *args, **kw ):
+    self.tag_name = 'queryobj'
+    super( QueryHandler, self ).__init__( *args, **kw )
 
   def list( self, *args, **kw ):
     if len(self.known_commands.keys()) == 0:
@@ -208,7 +213,7 @@ def cumulative_pivot_group_parser( sql_results, pivots="0,1", grouping="2", resu
         filtered_results[pivot] = tmp_group
 
     if len(groups) == 0:
-      return filtered_results
+      return filtered_results, metadata
 
     results = filtered_results
 
@@ -258,6 +263,7 @@ def simple_results_parser( sql_results, pivots="0", results="1", pivot_transform
         parsed_results[my_pivot] = new_data( row, results_cols, len_results_cols )
 
     filtered_results = {}
+    metadata = {}
 
     for pivot, info in parsed_results.items():
       info = check_tuple( info, len_results_cols )

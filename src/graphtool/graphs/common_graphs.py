@@ -428,9 +428,9 @@ class PieGraph( PivotGraph ):
     results = self.results
     parsed_data = self.results
 
-    column_units = getattr( self, 'column_units', '' )
+    column_units = getattr( self, 'column_units', self.metadata.get('column_units','') )
     sql_vars = getattr( self, 'vars', {} )
-    title = getattr( self, 'title', '' )
+    title = getattr( self, 'title', self.metadata.get('title','') )
 
     title = title + ' (Sum: %i ' + column_units.strip() + ')'
     title = expand_string( title, sql_vars )

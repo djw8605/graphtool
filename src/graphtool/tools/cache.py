@@ -46,10 +46,11 @@ class Cache( object ):
       kw['starttime'] = int(to_timestamp(kw['starttime']))
     if 'endtime' in kw.keys():
       kw['endtime'] = int(to_timestamp(kw['endtime']))
-    try:
-      hash_str = str(query.name)
-    except:
-      hash_str = str(query)
+    if 'starttime' in kw and 'endtime' in kw:
+      if kw['endtime'] - kw['starttime'] > 300:
+        kw['endtime'] -= kw['endtime'] % 10
+        kw['starttime'] -= kw['starttime'] % 10
+    hash_str = str(query)
     keys = kw.keys(); keys.sort()
     for key in keys:
       hash_str += ',' + str(key) + ',' + str(kw[key])
