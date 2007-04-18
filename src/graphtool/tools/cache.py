@@ -18,27 +18,31 @@ class Cache( object ):
   def add_cache( self, hash_str, results ):
     self.cache_lock.acquire()
 
-    if hash_str in self.cache_sorted:
-      self.cache_sorted.remove(hash_str)
-    self.cache_sorted.append( hash_str )
-    self.cache[ hash_str ] = results
+    try:
+      if hash_str in self.cache_sorted:
+        self.cache_sorted.remove(hash_str)
+      self.cache_sorted.append( hash_str )
+      self.cache[ hash_str ] = results
 
-    if len(self.cache_sorted) > self.max_cache_size:
-      oldest = self.cache_sorted.pop(0)
-      del self.cache[ oldest ]
-      del self.cache_timestamps[ oldest ]
+      if len(self.cache_sorted) > self.max_cache_size:
+        oldest = self.cache_sorted.pop(0)
+        del self.cache[ oldest ]
+        del self.cache_timestamps[ oldest ]
 
-    self.cache_timestamps[ hash_str ] = time.time()
+      self.cache_timestamps[ hash_str ] = time.time()
 
-    self.cache_lock.release()
+    finally:
+      self.cache_lock.release()
 
   def check_cache( self, hash_str ):
     self.cache_lock.acquire()
-    if (hash_str in self.cache_sorted) and (time.time() < self.cache_timestamps[hash_str] + self.cache_expire):
-      results = self.cache[ hash_str ]
-    else:
-      results = None
-    self.cache_lock.release()
+    try:
+      if (hash_str in self.cache_sorted) and (time.time() < self.cache_timestamps[hash_str] + self.cache_expire):
+        results = self.cache[ hash_str ]
+      else:
+        results = None
+    finally:
+      self.cache_lock.release()
     return results
 
   def make_hash_str( self, query, **kw ):

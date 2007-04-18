@@ -75,13 +75,13 @@ class XmlGenerator( QueryHandler ):
       gen.characters( title )
       gen.endElement( 'title' )
       gen.characters("\n\t\t")
-    graph_type = metadata['graph_type']
+    graph_type = metadata.get('graph_type',False)
     if graph_type and len(graph_type) > 0:
       gen.startElement( 'graph',{} )
       gen.characters( graph_type )
       gen.endElement( 'graph' )
       gen.characters("\n\t\t")
-    sql_string = str(metadata['sql'])
+    sql_string = str(metadata.get('sql',''))
     gen.startElement( 'sql',{} )
     gen.characters( sql_string )
     gen.characters("\n\t\t")
