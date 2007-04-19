@@ -119,18 +119,19 @@ class Grapher( Cache,QueryHandler ):
           raise e
       else:
         results = obj
-      try:
-        graph_name = metadata['graph_type']
-        graph = self.globals[ graph_name ]
-        file = cStringIO.StringIO()
-        graph_instance = graph() 
-        graph_results = graph_instance.run( results, file, metadata, **kw )
-      except Exception, e:
-        self.remove_progress( hash_str )
-        st = cStringIO.StringIO()
-        traceback.print_exc( file=st )
-        raise Exception( "Error in creating graph, hash_str:%s\n%s\n%s" % (hash_str, str(e), st.getvalue()) )
-      self.add_cache( hash_str, (graph_results, file.getvalue()) )
+      if 'graph_type' in metadata:
+        try:
+          graph_name = metadata['graph_type']
+          graph = self.globals[ graph_name ]
+          file = cStringIO.StringIO()
+          graph_instance = graph() 
+          graph_results = graph_instance.run( results, file, metadata, **kw )
+        except Exception, e:
+          self.remove_progress( hash_str )
+          st = cStringIO.StringIO()
+          traceback.print_exc( file=st )
+          raise Exception( "Error in creating graph, hash_str:%s\n%s\n%s" % (hash_str, str(e), st.getvalue()) )
+        self.add_cache( hash_str, (graph_results, file.getvalue()) )
       self.remove_progress( hash_str )
       return file.getvalue()
 
