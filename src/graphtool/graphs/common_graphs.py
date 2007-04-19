@@ -429,7 +429,7 @@ class PieGraph( PivotGraph ):
     parsed_data = self.results
 
     column_units = getattr( self, 'column_units', self.metadata.get('column_units','') )
-    column_units = columnt_units.strip()
+    column_units = column_units.strip()
     sql_vars = getattr( self, 'vars', {} )
     title = getattr( self, 'title', self.metadata.get('title','') )
 
