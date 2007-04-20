@@ -2,6 +2,9 @@
 from graphtool.base.xml_config import XmlConfig
 import sys, cStringIO
 
+
+#TODO: Test Mylar
+
 class ObjectIterator( XmlConfig ):
 
   commands = { 'default' : 'run',

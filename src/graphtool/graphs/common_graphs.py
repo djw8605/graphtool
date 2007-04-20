@@ -53,9 +53,11 @@ class BarGraph( PivotGraph ):
 
 class StackedBarGraph( PivotGroupGraph ):
 
-  width = 86400.0
-
   is_timestamps = False
+
+  def setup(self):
+      self.width = self.metadata.pop('span',1.0)
+      super( StackedBarGraph, self ).setup()
 
   def make_bottom_text( self ):
     units = str(self.metadata.pop('column_units','')).strip()
@@ -82,7 +84,8 @@ class StackedBarGraph( PivotGroupGraph ):
     if data_max != False: retval += "Maximum: " + pretty_float( data_max ) + " " + units
     if data_min != False: retval += ", Minimum: " + pretty_float( data_min ) + " " + units
     if data_average != False: retval += ", Average: " + pretty_float( data_average ) + " " + units
-    if data_current != False: retval += ", Current: " + pretty_float( data_current ) + " " + units
+    if self.is_timestamps:
+        if data_current != False: retval += ", Current: " + pretty_float( data_current ) + " " + units
     return retval
 
   def draw( self ):
@@ -91,8 +94,13 @@ class StackedBarGraph( PivotGroupGraph ):
     colors = list(self.colors)
     coords = self.coords
     keys = self.sort_keys( results ); keys.reverse()
+    
     for pivot,color in zip(keys,colors):
-      bottom, bars = self.make_stacked_bar( results[pivot], bottom, color )
+      if self.string_mode:
+          transformed = self.transform_strings( results[pivot] )
+          bottom, bars = self.make_stacked_bar( transformed, bottom, color )
+      else:
+          bottom, bars = self.make_stacked_bar( results[pivot], bottom, color )
       groups = results[pivot].keys(); groups.sort() 
       coords[pivot] = {}
       bar_dict = {}
@@ -101,7 +109,47 @@ class StackedBarGraph( PivotGroupGraph ):
       bars_keys = bar_dict.keys(); bars_keys.sort() 
       for idx in range(len(groups)):
         coords[pivot][groups[idx]] = bar_dict[ bars_keys[idx] ]
+        
+    if self.string_mode:
+        self.ax.set_xlim( xmin=0, xmax=len(self.string_map.keys()) )
 
+  def transform_strings(self, groupings ):
+      smap = self.string_map
+      new_groupings = {}
+      try:
+          for group, data in groupings.items():
+              new_groupings[smap[group]] = data
+      except Exception, e:
+          raise Exception( "While transforming strings to coordinates, encountered an unknown string: %s" % group)
+      return new_groupings
+  
+  def parse_data(self):
+    # Start off by looking for strings in the groups.
+    self.string_mode = False
+    for pivot, groups in getattr(self,'parsed_data',self.results).items():
+      for group in groups.keys():
+        if type(group) == types.StringType:
+          self.string_mode = True; break
+      if self.string_mode == True: break
+        
+    self.string_map = {}
+    self.next_value = 0
+    # Then parse as normal
+    super( StackedBarGraph, self ).parse_data()
+
+  def parse_group(self, group):
+      
+      if self.string_mode:
+          group = str(group)
+    
+          # Return if we've already seen this string
+          if self.string_map.get(group,-1) == -1:
+              # Otherwise, add it to the hash map
+              self.string_map[group] = self.next_value
+              self.next_value += 1
+              
+      return super( StackedBarGraph, self ).parse_group( group )
+      
   def make_stacked_bar( self, points, bottom, color ):
     if bottom == None:
       bottom = {}
@@ -121,7 +169,12 @@ class StackedBarGraph( PivotGroupGraph ):
       bottom[key] += points[key]
     if len( tmp_x ) == 0:
       return bottom, None
-    width = float(self.width) / 86400.0
+    width = float(self.width)
+    if self.is_timestamps:
+        width = float(width) / 86400.0
+    elif self.string_mode:
+        tmp_x = [i + .1*width for i in tmp_x]
+        width = .8 * width
     bars = self.ax.bar( tmp_x, tmp_y, bottom=tmp_b, width=width, color=color )
     setp( bars, linewidth=0.5 )
     return bottom, bars
@@ -139,6 +192,24 @@ class StackedBarGraph( PivotGroupGraph ):
     self.coords = coords
     return coords
 
+  def formatter_cb( self, ax ):
+      if self.string_mode:
+          smap = self.string_map
+          reverse_smap = {}
+          for key, val in smap.items():
+              reverse_smap[val] = key
+          ticks = smap.values(); ticks.sort()
+          ax.set_xticks( [i+.5 for i in ticks] )
+          ax.set_xticklabels( [reverse_smap[i] for i in ticks] )
+          labels = ax.get_xticklabels()
+          ax.grid( False )
+          ax.set_xlim( xmin=0,xmax=len(ticks) )
+      else:
+          try:
+              super(StackedBarGraph, self).formatter_cb( self, ax )
+          except:
+              return None
+     
 class CumulativeGraph( TimeGraph, PivotGroupGraph ):
  
   def make_bottom_text( self ):
@@ -504,7 +575,7 @@ class PieGraph( PivotGraph ):
     except:
       return None
 
-# TODO this is not generic...
+# TODO: this is not generic...
 class QualityMap( TimeGraph, PivotGroupGraph ):
 
   sort_keys = Graph.sort_keys

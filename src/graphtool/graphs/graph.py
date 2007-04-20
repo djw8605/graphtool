@@ -143,10 +143,13 @@ class Graph( object ):
     super( Graph, self ).__init__( *args, **kw )
     self.sorted_keys = None
 
-  def __call__( *args, **kw ):
-    return run( *args, **kw )
+  def __call__( self, *args, **kw ):
+    return self.run( *args, **kw )
 
   def run( self, results, file, metadata, **kw ):
+    if types.DictType != type(results) or types.DictType != type(metadata) or \
+        types.FileType != type(file):
+            raise Exception( "Wrong types; run's signature is <dict> results,<file> file, <dict> metadata")
     self.prefs = dict(prefs)
     self.kw = kw
     self.file = file
@@ -207,9 +210,9 @@ class Graph( object ):
 
   def prepare_canvas( self ):
     self.bottom_text = self.make_bottom_text()
-    title = getattr( self, 'title', '' )
-    xlabel = getattr( self, 'xlabel', '' )
-    ylabel = getattr( self, 'ylabel', '' )
+    title = getattr( self, 'title', self.metadata.get('title','') )
+    xlabel = getattr( self, 'xlabel', self.metadata.get('xlabel','') )
+    ylabel = getattr( self, 'ylabel', self.metadata.get('ylabel','') )
     labels = getattr( self, 'labels', [] )
     colors = getattr( self, 'colors', [] )
     formatter_cb = getattr( self, 'formatter_cb', lambda x: None )
@@ -415,13 +418,12 @@ class Graph( object ):
       svg = kw['svg']
     else:
       svg = False
-    if isinstance( file , StringIO.StringIO ) or type(file) == cStringIO_type:
-      canvas.draw() # **kw )
-      if svg:
-          renderer = RendererSVG(prefs[width], prefs[height], file)
-          canvas.figure.draw(renderer)
-          renderer.finish()
-      else:
+    canvas.draw() # **kw )
+    if svg:
+        renderer = RendererSVG(prefs[width], prefs[height], file)
+        canvas.figure.draw(renderer)
+        renderer.finish()
+    else:
         size = canvas.get_renderer().get_canvas_width_height()
         buf=canvas.tostring_argb()
         im=PILImage.fromstring('RGBA', size, buf, 'raw', 'RGBA', 0, 1)
@@ -431,8 +433,6 @@ class Graph( object ):
         a, r, g, b = im.split()
         im = PILImage.merge( 'RGBA', (r, g, b, a) )
         im.save( file, format = 'PNG' ) 
-    else: 
-      canvas.print_figure(  file, **kw )
 
   def draw( self, **kw ):
     pass
