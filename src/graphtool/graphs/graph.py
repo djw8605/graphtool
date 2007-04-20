@@ -293,14 +293,17 @@ class Graph( object ):
     if 'watermark' in prefs.keys() and str(prefs['watermark']) != 'False':
       #box = (.8,0,.2,.2)
       box = (0,0,prefs['height']/float(prefs['width']),1)
-      i = PILImage.open( os.path.expandvars( os.path.expanduser( prefs['watermark'] ) ) )
-      enh = PILImageEnhance.Contrast( i )
-      i = enh.enhance( .033 )
-      ax_wm = fig.add_axes( box  )
-      im = ax_wm.imshow( i, origin='lower', aspect='equal' )
-      ax_wm.axis('off')
-      ax_wm.set_frame_on( False )
-      ax_wm.set_clip_on( False )
+      try:
+          i = PILImage.open( os.path.expandvars( os.path.expanduser( prefs['watermark'] ) ) )
+          enh = PILImageEnhance.Contrast( i )
+          i = enh.enhance( .033 )
+          ax_wm = fig.add_axes( box  )
+          im = ax_wm.imshow( i, origin='lower', aspect='equal' )
+          ax_wm.axis('off')
+          ax_wm.set_frame_on( False )
+          ax_wm.set_clip_on( False )
+      except:
+          pass
 
     # Create our two axes, and set properties
     ax = fig.add_axes( ax_rect )
