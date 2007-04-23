@@ -178,9 +178,17 @@ class Graph( object ):
     return mykeys
 
   def setup( self ):
-    self.colors = self.preset_colors( self.sort_keys( self.parsed_data ) )
-    pass
+      self.labels = getattr( self, 'labels', self.make_labels_common( self.parsed_data ) )
+      self.colors = self.preset_colors( self.sort_keys( self.parsed_data ) )
 
+  def make_labels_common( self, results ):
+    labels = []
+    keys = self.sort_keys( results )
+    for link in keys:
+      labels.append( str(link) )
+    labels.reverse()
+    return labels 
+   
   def parse_data( self ):
     self.parsed_data = dict( self.results )
 
@@ -235,9 +243,12 @@ class Graph( object ):
     else:
       FigureCanvas = FigureCanvasAgg
     for key in prefs.keys():
+      if key in self.metadata.keys():
+        my_type = type( prefs[key] )
+        prefs[key] = my_type(self.metadata[key])
       if key in kw.keys():
         my_type = type( prefs[key] )
-        prefs[key] = my_type(kw[key])
+        prefs[key] = my_type(kw[key])        
   
     # Alter the number of label columns, if necessary:
     max_length = 0
@@ -504,6 +515,7 @@ class PivotGroupGraph( Graph ):
         new_datum = self.parse_datum( data )
         new_groups[ new_group ] = new_datum
     self.parsed_data = new_parsed_data
+
 
 class PivotGraph( Graph ):
 

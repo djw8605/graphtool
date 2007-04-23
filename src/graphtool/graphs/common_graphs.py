@@ -2,7 +2,7 @@
 import types, datetime, numpy, math
 from graphtool.tools.common import to_timestamp, expand_string
 from graphtool.graphs.graph import Graph, PivotGraph, PivotGroupGraph, TimeGraph
-from graphtool.graphs.common import pretty_float
+from graphtool.graphs.common import pretty_float, statistics
 import matplotlib.cm as cm
 from matplotlib.mlab import linspace
 from matplotlib.dates import date2num
@@ -15,30 +15,81 @@ from pylab import setp
 class BarGraph( PivotGraph ):
 
   bar_graph_space = .1
+  is_timestamps = False
+
+  def setup(self):
+      self.width = self.metadata.get('span',1.0)
+      super( BarGraph, self ).setup()
+      self.labels = []
+      self.colors = []
+
+
+  def make_bottom_text(self ):
+      units = str(self.metadata.get('column_units','')).strip()
+      span = self.metadata.get('span',None)
+      results = self.parsed_data
+      try:
+          data_min, data_max, data_average = statistics( results, span )
+      except Exception, e:
+          values = results.values()
+          try: data_max = max(values)
+          except: data_max = None
+          try: data_min = min(values)
+          except: data_min = None
+          try: data_average = numpy.average( values )
+          except: data_average = None
+          try:
+              last_time = max( results.keys() )
+              data_current = results[last_time]
+          except: data_current = None
+      retval = ''
+      if data_max != None: retval += "Maximum: " + pretty_float( data_max ) + " " + units
+      if data_min != None: retval += ", Minimum: " + pretty_float( data_min ) + " " + units
+      if data_average != None: retval += ", Average: " + pretty_float( data_average ) + " " + units
+      if self.is_timestamps:
+          if data_current != None: retval += ", Current: " + pretty_float( data_current ) + " " + units
+      return retval
+
 
   def draw( self ):
     results = self.parsed_data
     if len( results.items() ) == 0:
       return None
     keys = self.sort_keys( results )
-    first_key = keys[0]
-    if type(first_key) == types.StringType: is_str = True
     tmp_x = []; tmp_y = []
-    if is_str: counter = 0
-    num_bars = len( keys )
-    width = (1 - self.bar_graph_space) * float(self.width) / 86400.0 / num_bars
-    offset = width*position + bar_graph_space / 2.0
+
+    width = float(self.width)
+    if self.is_timestamps:
+        width = (1 - self.bar_graph_space) * width / 86400.0
+        offset = 0
+    elif self.string_mode:
+        width = (1 - self.bar_graph_space) * width
+        offset = self.bar_graph_space / 2.0
+    else:
+        offset = 0
     for pivot, data in results.items():
-      if is_str:
-        tmp_x.append( counter + offset )
-        counter += 1
+      if self.string_mode:
+          transformed = self.transform_strings( pivot )
+          tmp_x.append( transformed + offset )
       else:
         tmp_x.append( pivot + offset )
       tmp_y.append( float(data) )
-    self.bars = ax.bar( tmp_x, tmp_y, width=width, color=color )
+    self.bars = self.ax.bar( tmp_x, tmp_y, width=width )
+    setp( self.bars, linewidth=0.5 )
     pivots = keys
     for idx in range(len(pivots)):
       self.coords[ pivots[idx] ] = self.bars[idx]
+    if self.string_mode:
+        ymax = max(tmp_y); ymax *= 1.1
+        self.ax.set_xlim( xmin=0, xmax=len(self.string_map.keys()) )
+        self.ax.set_ylim( ymin=0, ymax=ymax )
+        
+  def transform_strings(self, pivot ):
+      smap = self.string_map
+      try:
+          return smap[pivot]
+      except Exception, e:
+          raise Exception( "While transforming strings to coordinates, encountered an unknown string: %s" % group)
 
   def get_coords( self ):
     height = self.prefs['height']
@@ -50,17 +101,59 @@ class BarGraph( PivotGraph ):
       my_coords = t.seq_xy_tups( bar.get_verts() )
       coords[ pivot ] = tuple( (i[0],height-i[1]) for i in my_coords )
     return coords
+    
+  def parse_data(self):
+    # Start off by looking for strings in the groups.
+    self.string_mode = False
+    for pivot in getattr(self,'parsed_data',self.results).keys():
+        if type(pivot) == types.StringType:
+            self.string_mode = True; break
+        if self.string_mode == True: break
+        
+    self.string_map = {}
+    self.next_value = 0
+    # Then parse as normal
+    super( BarGraph, self ).parse_data()
+
+  def parse_pivot(self, pivot):
+      
+      if self.string_mode:
+          pivot = str(pivot)  
+          # Add string to the hash map
+          self.string_map[pivot] = self.next_value
+          self.next_value += 1
+              
+      return super( BarGraph, self ).parse_pivot( pivot )
+
+  def formatter_cb( self, ax ):
+      if self.string_mode:
+          smap = self.string_map
+          reverse_smap = {}
+          for key, val in smap.items():
+              reverse_smap[val] = key
+          ticks = smap.values(); ticks.sort()
+          ax.set_xticks( [i+.5 for i in ticks] )
+          ax.set_xticklabels( [reverse_smap[i] for i in ticks] )
+          labels = ax.get_xticklabels()
+          ax.grid( False )
+          ax.set_xlim( xmin=0,xmax=len(ticks) )
+      else:
+          try:
+              super(StackedBarGraph, self).formatter_cb( self, ax )
+          except:
+              return None
 
 class StackedBarGraph( PivotGroupGraph ):
 
   is_timestamps = False
 
   def setup(self):
-      self.width = self.metadata.pop('span',1.0)
+      self.width = self.metadata.get('span',1.0)
       super( StackedBarGraph, self ).setup()
 
   def make_bottom_text( self ):
-    units = str(self.metadata.pop('column_units','')).strip()
+    units = str(self.metadata.get('column_units','')).strip()
+    span = self.metadata.get('span',None)
     agg_stats = {}
     results = self.parsed_data
     for link, groups in results.items():
@@ -69,23 +162,26 @@ class StackedBarGraph( PivotGroupGraph ):
           agg_stats[timebin] += value
         else:
           agg_stats[timebin] = value
-    values = agg_stats.values()
-    try: data_max = max(values)
-    except: data_max = False
-    try: data_min = min(values)
-    except: data_min = False
-    try: data_average = numpy.average( values )
-    except: data_average = False
     try:
-      last_time = max( agg_stats.keys() )
-      data_current = agg_stats[last_time]
-    except: data_current = False
+        data_min, data_max, data_average = statistics( agg_stats, span )
+    except Exception, e:
+        values = agg_stats.values()
+        try: data_max = max(values)
+        except: data_max = None
+        try: data_min = min(values)
+        except: data_min = None
+        try: data_average = numpy.average( values )
+        except: data_average = None
+        try:
+          last_time = max( agg_stats.keys() )
+          data_current = agg_stats[last_time]
+        except: data_current = None
     retval = ''
-    if data_max != False: retval += "Maximum: " + pretty_float( data_max ) + " " + units
-    if data_min != False: retval += ", Minimum: " + pretty_float( data_min ) + " " + units
-    if data_average != False: retval += ", Average: " + pretty_float( data_average ) + " " + units
+    if data_max != None: retval += "Maximum: " + pretty_float( data_max ) + " " + units
+    if data_min != None: retval += ", Minimum: " + pretty_float( data_min ) + " " + units
+    if data_average != None: retval += ", Average: " + pretty_float( data_average ) + " " + units
     if self.is_timestamps:
-        if data_current != False: retval += ", Current: " + pretty_float( data_current ) + " " + units
+        if data_current != None: retval += ", Current: " + pretty_float( data_current ) + " " + units
     return retval
 
   def draw( self ):
@@ -214,7 +310,7 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
  
   def make_bottom_text( self ):
     results = self.results 
-    units = str(self.metadata.pop('column_units','')).strip()
+    units = str(self.metadata.get('column_units','')).strip()
     agg_stats = {} 
     data_max = 0
     for pivot, groups in results.items():
@@ -233,7 +329,7 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
 
     results = self.results
     
-    is_cumulative = self.metadata.pop( 'is_cumulative', False )
+    is_cumulative = self.metadata.get( 'is_cumulative', False )
 
     if not is_cumulative:
       raise Exception( "Data passed to cumulative graph not marked as cumulative." )
@@ -585,9 +681,9 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
     super( QualityMap, self ).setup()
 
     results = self.parsed_data
-    self.try_column =  int( self.metadata.pop('try_column',0)  ) 
-    self.done_column = int( self.metadata.pop('done_column',1) )
-    self.fail_column = int( self.metadata.pop('fail_column',2) )
+    self.try_column =  int( self.metadata.get('try_column',0)  ) 
+    self.done_column = int( self.metadata.get('done_column',1) )
+    self.fail_column = int( self.metadata.get('fail_column',2) )
 
     # Rearrange our data
     timebins = set()

@@ -160,3 +160,26 @@ def pretty_float( num ):
   except: floats=2
   format = "%." + str(floats) + "f"
   return format % float(num)
+
+def statistics( results, span=None ):
+    results = dict(results)
+    if span != None:
+        parsed_data = {}
+        min_key = min(results.keys())
+        max_key = max(results.keys())
+        for i in range(min_key, max_key+span, span):
+            if i in results:
+                parsed_data[i] = results[i]
+                del results[i]
+            else:
+                parsed_data[i] = 0.0
+        if len(results) > 0:
+            raise Exception("Unable to use all the values for the statistics")
+    else:
+        parsed_data = results
+    values = parsed_data.values()
+    data_min = min(values)
+    data_max = max(values)
+    data_avg = numpy.average( values )
+    return data_min, data_max, data_avg
+    
