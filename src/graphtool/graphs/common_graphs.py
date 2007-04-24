@@ -338,12 +338,44 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
 
     super( CumulativeGraph, self ).setup()
 
-    results = self.results
+    results = getattr( self, 'parsed_data', self.results)
     
-    is_cumulative = self.metadata.get( 'is_cumulative', False )
+    is_cumulative = self.metadata.get( 'is_cumulative', None )
 
-    if not is_cumulative:
-      raise Exception( "Data passed to cumulative graph not marked as cumulative." )
+    if is_cumulative == None:
+      raise Exception( "The is_cumulative metadata was not set; set to true if data is cumulative, false otherwise." )
+
+    if is_cumulative == False:
+        # A routine to turn pivot-group data into cumulative data.
+        data = {}
+        span = self.metadata.get('span', None)
+        if span == None:
+            raise Exception( "Span is a required metadata value if is_cumulative=False." )
+        # Figure out all the timebins:
+        timebins = set()
+        for key, value in results.items():
+            for group in value.keys():
+                timebins.add(group)
+        timebins_list = []
+        min_timebin = min(timebins); max_timebin = max(timebins);
+        cur_timebin = min_timebin
+        while cur_timebin <= max_timebin:
+            timebins_list.append(cur_timebin)
+            timebins.remove(cur_timebin)
+            cur_timebin += span
+        if len(timebins) > 0:
+            raise Exception("Some data is not aligned to timebins!  Extra values are: %s" % str(timebins))
+        for key, value in results.items():
+            groups = value.keys()
+            csum = 0
+            cur_dict = {}
+            data[key] = cur_dict
+            for timebin in timebins_list:
+                if timebin in groups:
+                    csum += value[timebin]
+                cur_dict[timebin] = csum
+        self.parsed_data = data
+    
 
   def make_stacked_line( self, points, bottom, color ):
 
@@ -427,7 +459,7 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
 
   def draw( self ):
 
-    results = self.results
+    results = getattr( self, 'parsed_data', self.results )
     colors = self.colors
     bottom = None
     coords = self.coords

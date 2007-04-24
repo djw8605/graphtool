@@ -14,11 +14,11 @@ def make_time_data( ):
     return begin_time, end_time, data
 
 # Create and plot cumulative plot.
-TSBG = CumulativeGraph()
+CG = CumulativeGraph()
 begin_time, end_time, data1 = make_time_data()
 begin_time, end_time, data2 = make_time_data()
 data = {'Team A': data1, 'Team B': data2}
-metadata = {'title':'Some Cumulative Data', 'starttime':begin_time, 'endtime':end_time, 'span':span }
+metadata = {'title':'Some Cumulative Data', 'starttime':begin_time, 'endtime':end_time, 'span':span, 'is_cumulative':False }
 filename = expand_string('$HOME/tmp/cumulative.png',os.environ)
 file = open( filename, 'w' )
-TSBG( data, file, metadata )
+CG( data, file, metadata )
