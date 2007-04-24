@@ -161,7 +161,7 @@ def pretty_float( num ):
   format = "%." + str(floats) + "f"
   return format % float(num)
 
-def statistics( results, span=None ):
+def statistics( results, span=None, is_timestamp = False ):
     results = dict(results)
     if span != None:
         parsed_data = {}
@@ -181,5 +181,10 @@ def statistics( results, span=None ):
     data_min = min(values)
     data_max = max(values)
     data_avg = numpy.average( values )
-    return data_min, data_max, data_avg
+    if is_timestamp:
+        current_time = max(parsed_data.keys())
+        data_current = parsed_data[ current_time ]
+        return data_min, data_max, data_avg, data_current
+    else:
+        return data_min, data_max, data_avg
     

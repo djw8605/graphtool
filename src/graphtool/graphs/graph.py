@@ -59,9 +59,9 @@ def draw_empty( text, file, kw ):
   else:
     canvas.print_figure(  file, **kw )
 
-def find_info( attr, kw, metadata ):
+def find_info( attr, kw, metadata, default='' ):
   str_attr = str(attr)
-  return kw.get( str_attr, metadata.get( str_attr, '' ) )
+  return kw.get( str_attr, metadata.get( str_attr, default ) )
 
 class Grapher( Cache,QueryHandler ):
 
@@ -624,8 +624,8 @@ class TimeGraph( DBGraph ):
           begin = min( timebin, begin )
           end = max( timebin, end )
     else:
-      begin = to_timestamp(vars.get('starttime', time.time()-24*3600))
-      end = to_timestamp(vars.get('endtime',time.time()))
+      begin = to_timestamp(find_info('starttime', vars, self.metadata, time.time()-24*3600))
+      end = to_timestamp(find_info('endtime',vars, self.metadata, time.time()))
 
     self.begin = begin; self.end = end
     self.begin_datetime = datetime.datetime.utcfromtimestamp( float(begin) )
@@ -633,13 +633,13 @@ class TimeGraph( DBGraph ):
     self.begin_num = date2num( self.begin_datetime )
     self.end_num   = date2num( self.end_datetime   )
 
-    self.width = vars.get('span', self.time_interval() ) 
+    self.width = find_info('span', vars, self.metadata, self.time_interval() ) 
 
     title = getattr( self, 'title', '' )
     self.title = self.add_time_to_title( title )
 
   def write_graph( self ):
-    if isinstance(self, PivotGroupGraph ) and self.ax != None:
+    if (isinstance(self, PivotGroupGraph )) and self.ax != None:
       self.ax.set_xlim( xmin=self.begin_num, xmax=self.end_num )
     super( TimeGraph, self ).write_graph()
 

@@ -29,7 +29,10 @@ class BarGraph( PivotGraph ):
       span = self.metadata.get('span',None)
       results = self.parsed_data
       try:
-          data_min, data_max, data_average = statistics( results, span )
+          if self.is_timestamps:
+              data_min, data_max, data_average, data_current = statistics( results, span, True )
+          else:
+              data_min, data_max, data_average = statistics( results, span )
       except Exception, e:
           values = results.values()
           try: data_max = max(values)
@@ -60,7 +63,8 @@ class BarGraph( PivotGraph ):
 
     width = float(self.width)
     if self.is_timestamps:
-        width = (1 - self.bar_graph_space) * width / 86400.0
+        #width = (1 - self.bar_graph_space) * width / 86400.0
+        width = width / 86400.0
         offset = 0
     elif self.string_mode:
         width = (1 - self.bar_graph_space) * width
@@ -74,6 +78,8 @@ class BarGraph( PivotGraph ):
       else:
         tmp_x.append( pivot + offset )
       tmp_y.append( float(data) )
+    if self.is_timestamps:
+        tmp_x = [date2num( datetime.datetime.utcfromtimestamp(key) ) for key in tmp_x]
     self.bars = self.ax.bar( tmp_x, tmp_y, width=width )
     setp( self.bars, linewidth=0.5 )
     pivots = keys
@@ -83,6 +89,8 @@ class BarGraph( PivotGraph ):
         ymax = max(tmp_y); ymax *= 1.1
         self.ax.set_xlim( xmin=0, xmax=len(self.string_map.keys()) )
         self.ax.set_ylim( ymin=0, ymax=ymax )
+    elif self.is_timestamps:
+        self.ax.set_xlim( xmin=min(tmp_x), xmax=max(tmp_x)+width )
         
   def transform_strings(self, pivot ):
       smap = self.string_map
@@ -163,7 +171,10 @@ class StackedBarGraph( PivotGroupGraph ):
         else:
           agg_stats[timebin] = value
     try:
-        data_min, data_max, data_average = statistics( agg_stats, span )
+        if self.is_timestamps:
+            data_min, data_max, data_average, data_current = statistics( results, span, True )
+        else:
+            data_min, data_max, data_average = statistics( results, span )
     except Exception, e:
         values = agg_stats.values()
         try: data_max = max(values)
