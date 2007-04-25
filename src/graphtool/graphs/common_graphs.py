@@ -12,6 +12,10 @@ from matplotlib.cbook import is_string_like
 from matplotlib.colors import normalize
 from pylab import setp
 
+def find_info( attr, kw, metadata, default='' ):
+  str_attr = str(attr)
+  return kw.get( str_attr, metadata.get( str_attr, default ) )
+
 class BarGraph( PivotGraph ):
 
   bar_graph_space = .1
@@ -156,7 +160,6 @@ class StackedBarGraph( PivotGroupGraph ):
   is_timestamps = False
 
   def setup(self):
-      self.width = self.metadata.get('span',1.0)
       super( StackedBarGraph, self ).setup()
 
   def make_bottom_text( self ):
@@ -196,6 +199,8 @@ class StackedBarGraph( PivotGroupGraph ):
     return retval
 
   def draw( self ):
+    vars = getattr( self, 'vars', {} )
+    self.width = find_info('span',vars,self.metadata,1.0)
     results = self.parsed_data
     bottom = None
     colors = list(self.colors)

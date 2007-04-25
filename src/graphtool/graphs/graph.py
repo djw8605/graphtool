@@ -147,9 +147,8 @@ class Graph( object ):
     return self.run( *args, **kw )
 
   def run( self, results, file, metadata, **kw ):
-    if types.DictType != type(results) or types.DictType != type(metadata) or \
-        types.FileType != type(file):
-            raise Exception( "Wrong types; run's signature is <dict> results,<file> file, <dict> metadata")
+    if types.DictType != type(results) or types.DictType != type(metadata):
+            raise Exception( "Wrong types; run's signature is <dict> results,<file> file, <dict> metadata\nPassed types were %s, %s, %s." % (type(results),type(file),type(metadata)))
     self.prefs = dict(prefs)
     self.kw = kw
     self.file = file
