@@ -658,11 +658,11 @@ class PieGraph( PivotGraph ):
     amt = [] 
     keys = self.sort_keys( parsed_data )
     for key in keys:
-      labels.append( str(key) + (' (%i)' % float(parsed_data[key])) )
+      labels.append( str(key) + (' (%i)' % int(float(parsed_data[key]))) )
       amt.append( float(parsed_data[key]) )
     self.labels = labels
     self.labels.reverse()
-    self.title = title % float(sum(amt))
+    self.title = title % int(float(sum(amt)))
     self.amt_sum = float(sum(amt))
     self.amt = amt
 

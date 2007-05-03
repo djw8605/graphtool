@@ -26,6 +26,12 @@ def echo( *args, **kw ):
 def make_string( *args, **kw ):
   return str(args[0])
 
+def make_int( *args, **kw ):
+  return int(args[0])
+
+def make_float( *args, **kw ):
+  return int(args[0])
+
 def make_entry( row, cols, transform=None, row_size=None, **kw ):
   if row_size == None: row_size = len(row)
   if len(cols) > 1:
