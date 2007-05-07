@@ -729,9 +729,30 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
     super( QualityMap, self ).setup()
 
     results = self.parsed_data
-    self.try_column =  int( self.metadata.get('try_column',0)  ) 
-    self.done_column = int( self.metadata.get('done_column',1) )
-    self.fail_column = int( self.metadata.get('fail_column',2) )
+    
+    self.multi_column = False
+    self.two_column = False
+    self.percentages = False
+    
+    # Determine the columns to use; deprecated.
+    if 'done_column' in self.metadata:
+        self.done_column = int( self.metadata.get('done_column',1) )
+        self.fail_column = int( self.metadata.get('fail_column',2) )
+        self.multi_column = True
+    else:
+        # See if the values are tuples.
+        found_data = False
+        for key, val in results.items():
+            for group, data in val.items():
+                found_data = True
+                first_data = data
+                break
+            if found_data: break
+        if type(found_data) == types.TupleType or type(found_data) == types.ListType:
+            assert len(found_data) == 2
+            self.two_column = True
+        else:
+            self.percentages = True
 
     # Rearrange our data
     timebins = set()
@@ -779,21 +800,29 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
     ax = self.ax
     links = self.links
     links_lu = self.links_lu
-    try_column, done_column, fail_column = self.try_column, self.done_column, self.fail_column
+    if self.multi_column:
+        done_column, fail_column = self.done_column, self.fail_column
     results = self.parsed_data
     for link in self.sort_keys( results ):
       coords[link] = {}
       for timebin in results[link].keys():
         data = results[link][timebin]
-        try:
-          try_files, done, fail = data[try_column], data[done_column], data[fail_column]
-        except Exception, e:
-          continue
-        if float(done) > 0:
-          value = done / float( fail + done )
-        else:
-          value = 0.0
-        if done >= 0 or fail >= 0:
+        value = None
+        if self.multi_column or self.two_column:
+          if self.multi_column:
+              try:
+                  try_files, done, fail = data[try_column], data[done_column], data[fail_column]
+              except Exception, e:
+                  continue
+          if self.two_column:
+              done, fail = data
+          if float(done) > 0:
+            value = done / float( fail + done )
+          elif float(done) > 0 or float(fail) > 0:
+            value = 0.0
+        if self.percentages:
+            value = data
+        if value != None:
           left = date2num( datetime.datetime.utcfromtimestamp( float(timebin) ) )
           bottom = links_lu[link]
           color = self.mapper.to_rgba( value*100 )
@@ -837,7 +866,7 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
     for label in ax.get_yticklabels():
       bbox = label.get_window_extent( self.canvas.get_renderer() )
       total_xmax = max( bbox.xmax()-bbox.xmin(), total_xmax )
-    move_left = (total_xmax+4) / self.prefs['width']
+    move_left = (total_xmax+6) / self.prefs['width']
     pos = ax.get_position()
     pos[0] = move_left
     pos[2] = 1 - pos[0] - .02
