@@ -1,5 +1,5 @@
 
-import threading, sys, cStringIO, traceback
+import threading, sys, cStringIO, traceback, re
 from graphtool.base import GraphToolInfo
 from graphtool.base.xml_config import XmlConfig
 
@@ -169,6 +169,12 @@ class DatabaseInfoV2( XmlConfig ):
       conn = self.conn_manager.get_connection( conn )
       results = conn.execute_statement( sql_string, sql_var )
     except Exception, e:
+      if len(e.args) == 1:
+        msg = str(e.args[0])
+        m = re.search('Unknown database \'(.*)\'', msg)
+        if m:
+          db = m.groups(0)
+          raise Exception("Unknown database: %s" % db)
       out = cStringIO.StringIO()
       print >> out, "\nUnable to successfully query database, exception follows:\n"
       print >> out, e, "\n"
