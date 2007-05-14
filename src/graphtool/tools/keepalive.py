@@ -137,7 +137,6 @@ def executeCommand(command, timeOut = 1200):
       the exit code or -1 if did not finish on time.
 
     """
-
     startTime = time.time()
 
     # build script file if necessary
@@ -156,7 +155,7 @@ def executeCommand(command, timeOut = 1200):
             logging.error("Cannot generate execution script: " + str(msg))
             return
  
-        command = './script.sh'
+        command = 'bash -c ./script.sh'
 
     # run command
     job = popen2.Popen4(command)
