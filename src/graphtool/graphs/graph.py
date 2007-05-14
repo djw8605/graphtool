@@ -645,7 +645,12 @@ class TimeGraph( DBGraph ):
            "Number of Attempted Transfers\n(From 4:45 12-14-2006 to 5:56 12-15-2006)"
     """
     begin = self.begin; end  = self.end
-    interval = self.time_interval( )
+    if 'span' in self.metadata:
+        interval = self.metadata['span']
+    elif 'given_kw' in self.metadata and 'span' in self.metadata['given_kw']:
+        interval = self.metadata['given_kw']['span']
+    else:
+        interval = self.time_interval( )
     if interval == 3600:
       format_str = '%Y-%m-%d %H:%M'
       format_name = 'Hours'
