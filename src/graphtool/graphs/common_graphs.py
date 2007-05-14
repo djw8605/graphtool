@@ -875,7 +875,6 @@ class QualityMap( HorizontalGraph, TimeGraph, PivotGroupGraph ):
     pad_pix = self.additional_vertical_padding()
     height_inches = self.fig.get_size_inches()[-1]
     pad_perc = pad_pix / self.fig.get_dpi() / height_inches / 2.0
-    print "pad perc", pad_perc
     cb = self.fig.colorbar( self.mapper, format="%d%%", orientation='horizontal', fraction=0.04, pad=pad_perc, aspect=40  )
     setp( cb.outline, linewidth=.5 )
     setp( cb.ax.get_xticklabels(), size=10 )

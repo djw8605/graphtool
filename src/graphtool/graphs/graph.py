@@ -350,7 +350,6 @@ class Graph( object ):
     title = title.split('\n',1)
     subtitle_height_pix = (prefs['subtitle_size'] + 2*prefs['text_padding']) * (len(title) > 1)
     ax_height_pix = ax_rect[-1] * height_inches * dpi 
-    print "ax_height_pix", ax_height_pix
     ax.title = ax.text( 0.5, 1 + (subtitle_height_pix + prefs['text_padding'])/ax_height_pix, title[0],
                         verticalalignment='bottom', horizontalalignment='center' )
     if len(title) > 1:
@@ -477,10 +476,8 @@ class HorizontalGraph( Graph ):
             height_pix = height * fig_height * dpi
             num_labels = len(labels)
             pixels_per_label = 2*self.prefs['text_padding'] + self.prefs['text_size']
-            print pixels_per_label
             new_height_pix = max(num_labels * pixels_per_label + 2*self.prefs['figure_padding'], height_pix)
             self.metadata['height'] = self.prefs['height'] + new_height_pix - height_pix + self.additional_vertical_padding()
-            print self.metadata['height']
             self.metadata['fixed-height'] = True
             # After we calculate the new height, prepare the canvas again.
             super( HorizontalGraph, self ).prepare_canvas()
@@ -505,10 +502,8 @@ class HorizontalGraph( Graph ):
             height_per = self.ax.get_position()[-1]
             height_inches = self.fig.get_size_inches()[-1] * height_per
             height_pixels = self.fig.get_dpi() * height_inches
-            print "height_pixels", height_pixels, height_per
             max_height_labels = height_pixels / max( 1, len(labels) )
-            print max_height_labels
-
+    
             # Adjust the font height to match the maximum available height
             font_height = max_height_labels * 1.7 / 3.0 - 1.0
             font_height = min( font_height, 7 )
