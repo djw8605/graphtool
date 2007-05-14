@@ -24,9 +24,8 @@ class BarGraph( PivotGraph ):
   def setup(self):
       self.width = self.metadata.get('span',1.0)
       super( BarGraph, self ).setup()
-      self.labels = []
-      self.colors = []
-
+      self.legend = False
+     
   def make_bottom_text(self ):
       units = str(self.metadata.get('column_units','')).strip()
       span = self.metadata.get('span',None)
@@ -149,7 +148,7 @@ class BarGraph( PivotGraph ):
           ax.set_xlim( xmin=0,xmax=len(ticks) )
       else:
           try:
-              super(StackedBarGraph, self).x_formatter_cb( self, ax )
+              super(BarGraph, self).x_formatter_cb( ax )
           except:
               return None
 
@@ -163,11 +162,7 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
     tmp_x = []; tmp_y = []
 
     width = float(self.width)
-    if self.is_timestamps:
-        #width = (1 - self.bar_graph_space) * width / 86400.0
-        width = width / 86400.0
-        offset = 0
-    elif self.string_mode:
+    if self.string_mode:
         width = (1 - self.bar_graph_space) * width
         offset = self.bar_graph_space / 2.0
     else:
@@ -179,20 +174,39 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
       else:
         tmp_x.append( pivot + offset )
       tmp_y.append( float(data) )
-    if self.is_timestamps:
-        tmp_x = [date2num( datetime.datetime.utcfromtimestamp(key) ) for key in tmp_x]
-    self.bars = self.ax.bar( tmp_x, tmp_y, width=width )
+    self.bars = self.ax.barh( tmp_x, tmp_y, height=width )
     setp( self.bars, linewidth=0.5 )
     pivots = keys
     for idx in range(len(pivots)):
       self.coords[ pivots[idx] ] = self.bars[idx]
     if self.string_mode:
         ymax = max(tmp_y); ymax *= 1.1
-        self.ax.set_xlim( xmin=0, xmax=len(self.string_map.keys()) )
-        self.ax.set_ylim( ymin=0, ymax=ymax )
-    elif self.is_timestamps:
-        self.ax.set_xlim( xmin=min(tmp_x), xmax=max(tmp_x)+width )
+        self.ax.set_ylim( xmin=0, xmax=len(self.string_map.keys()) )
+        self.ax.set_xlim( ymin=0, ymax=ymax )
     
+  def x_formatter_cb( self, ax ):
+      try:
+          super( PivotGraph, self ).x_formatter_cb( ax )
+      except:
+          pass
+    
+  def y_formatter_cb( self, ax ):
+      if self.string_mode:
+          smap = self.string_map
+          reverse_smap = {}
+          for key, val in smap.items():
+              reverse_smap[val] = key
+          ticks = smap.values(); ticks.sort()
+          ax.set_yticks( [i+.5 for i in ticks] )
+          ax.set_yticklabels( [reverse_smap[i] for i in ticks] )
+          labels = ax.get_yticklabels()
+          ax.grid( False )
+          ax.set_ylim( xmin=0,xmax=len(ticks) )
+      else:
+          try:
+              super( PivotGraph, self).y_formatter_cb( ax )
+          except:
+              return None
 
 class StackedBarGraph( PivotGroupGraph ):
 
@@ -829,7 +843,6 @@ class QualityMap( HorizontalGraph, TimeGraph, PivotGroupGraph ):
         self.ax.plot( [self.begin_num, self.end_num], [line_num, line_num], linewidth=1.0, color='k', linestyle=':' )
     self.ax.xaxis.grid(True)
     self.ax.yaxis.grid(False)
-    #self.ax.set_xlim( xmin=self.begin_num, xmax=self.end_num )
     self.ax.set_ylim( ymin=0, ymax=len(links) )
 
   def draw( self ):

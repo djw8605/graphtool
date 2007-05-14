@@ -184,8 +184,8 @@ class Graph( object ):
   def make_labels_common( self, results ):
     labels = []
     keys = self.sort_keys( results )
-    for link in keys:
-      labels.append( str(link) )
+    for label in keys:
+      labels.append( str(label) )
     labels.reverse()
     return labels 
    
@@ -352,10 +352,10 @@ class Graph( object ):
     ax_height_pix = ax_rect[-1] * height_inches * dpi 
     ax.title = ax.text( 0.5, 1 + (subtitle_height_pix + prefs['text_padding'])/ax_height_pix, title[0],
                         verticalalignment='bottom', horizontalalignment='center' )
+    ax.title.set_transform( ax.transAxes )
+    ax.title.set_clip_box( None )
+    ax._set_artist_props( ax.title )
     if len(title) > 1:
-      ax.title.set_transform( ax.transAxes )
-      ax.title.set_clip_box( None )
-      ax._set_artist_props( ax.title )
       ax.subtitle = ax.text( 0.5, 1.0 + prefs['text_padding']/ax_height_pix, title[1],
           verticalalignment='bottom',
           horizontalalignment='center' )
@@ -493,6 +493,7 @@ class HorizontalGraph( Graph ):
         ff = FixedFormatter( labels )
         ax.yaxis.set_major_formatter( ff )
         ax.yaxis.set_major_locator( fl )
+
         
     def additional_vertical_padding(self): return 0
 
@@ -506,7 +507,7 @@ class HorizontalGraph( Graph ):
     
             # Adjust the font height to match the maximum available height
             font_height = max_height_labels * 1.7 / 3.0 - 1.0
-            font_height = min( font_height, 7 )
+            font_height = min( font_height, self.prefs['text_size'] )
             setp( self.ax.get_yticklabels(), size=font_height )
 
             self.ax.yaxis.draw( self.canvas.get_renderer() )
