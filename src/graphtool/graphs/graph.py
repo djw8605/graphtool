@@ -33,7 +33,7 @@ prefs = {
   'font' : 'Lucida Grande',
   'font_family' : 'sans-serif',
   'square_axis' : False,
-  'watermark' : '$GRAPHTOOL_ROOT/static_content/CMSbwl3.png'
+  'watermark' : '$GRAPHTOOL_ROOT/static_content/CMSbwl3.png',
 }
 
 def draw_empty( text, file, kw ):
@@ -222,7 +222,8 @@ class Graph( object ):
     ylabel = getattr( self, 'ylabel', self.metadata.get('ylabel','') )
     labels = getattr( self, 'labels', [] )
     colors = getattr( self, 'colors', [] )
-    formatter_cb = getattr( self, 'formatter_cb', lambda x: None )
+    x_formatter_cb = getattr( self, 'x_formatter_cb', lambda x: None )
+    y_formatter_cb = getattr( self, 'y_formatter_cb', lambda x: None )
     legend = getattr( self, 'legend', True )
     bottom_text = getattr( self, 'bottom_text', None )
     kw = self.kw
@@ -247,7 +248,9 @@ class Graph( object ):
         prefs[key] = my_type(self.metadata[key])
       if key in kw.keys():
         my_type = type( prefs[key] )
-        prefs[key] = my_type(kw[key])        
+        prefs[key] = my_type(kw[key])    
+        
+    self.prefs = prefs    
   
     # Alter the number of label columns, if necessary:
     max_length = 0
@@ -258,27 +261,26 @@ class Graph( object ):
     if max_length > 30: prefs['columns'] = min( 3, prefs['columns'] )
     if max_length > 37: prefs['columns'] = min( 2, prefs['columns'] )
 
-    # Various size calculations
+    # Figure size
     num_labels = len( labels )
-    dpi = prefs['width'] /prefs['width_inches']
-    height_inches = prefs['height'] / float(dpi)
-    legend_width = 1 - 2 * prefs['legend_padding']
+    dpi = prefs['width'] / float(prefs['width_inches'])
+    height_inches = prefs['height'] / dpi
+
+    # Calculations for the legend
+    rows = 0.0; column_height = 0.0; bottom = 0.0
+    # Max number of rows in the legend
     rows = max(1,min( numpy.ceil(num_labels / float(prefs['columns'])), prefs['max_rows']) + 2*int(bottom_text != None))
-    if not legend:
-      rows = 0.0
-    legend_height = (2*prefs['text_padding'] + prefs['text_size']) * rows/float(prefs['height'])
+
+    # Width and height for the legend, then converted into pixels.
+    legend_width = 1 - 2 * prefs['legend_padding'] # In percent of screen.
+    legend_height = (2*prefs['text_padding'] + prefs['text_size']) * rows/float(prefs['height']) # In percent of screen.
     leg_pix_height = legend_height * height_inches          * dpi
     leg_pix_width =  legend_width  * prefs['width_inches']  * dpi
     column_width = 1.0 / float( prefs['columns'] )
     if legend:
       column_height = (2 * prefs['text_padding'] + prefs['text_size']) / leg_pix_height
-    else:
-      column_height = 0.0
-    box_width = prefs['text_size']
-    if legend:
       bottom = 2 * prefs['legend_padding'] + legend_height
-    else:
-      bottom = 0.0
+    box_width = prefs['text_size']
 
     # Create our figure and canvas to work with
     fig = Figure()
@@ -294,14 +296,18 @@ class Graph( object ):
     legend_rect = prefs['legend_padding'], prefs['legend_padding'], legend_width, legend_height
     if prefs['square_axis']:
       min_size = min( 1 - 1.5*prefs['figure_padding'], 1 - bottom - 2*prefs['figure_padding'] )
-      ax_rect = (.5 - min_size/2.0*prefs['height']/float(prefs['width']), prefs['figure_padding'] + bottom, prefs['height']/float(prefs['width'])*min_size, min_size )
+      ax_rect = (.5 - min_size/2.0*prefs['height']/float(prefs['width']), 
+                 prefs['figure_padding'] + bottom, 
+                 prefs['height']/float(prefs['width'])*min_size, 
+                 min_size )
     else:
-      ax_rect = (prefs['figure_padding'], prefs['figure_padding'] + bottom, 1 - 1.5*prefs['figure_padding'], \
+      ax_rect = (prefs['figure_padding'], 
+                 prefs['figure_padding'] + bottom, 
+                 1 - 1.5*prefs['figure_padding'],
                  1 - bottom - 2*prefs['figure_padding'])
 
     # Add a watermark:
     if 'watermark' in prefs.keys() and str(prefs['watermark']) != 'False':
-      #box = (.8,0,.2,.2)
       box = (0,0,prefs['height']/float(prefs['width']),1)
       try:
           i = PILImage.open( os.path.expandvars( os.path.expanduser( prefs['watermark'] ) ) )
@@ -417,7 +423,8 @@ class Graph( object ):
       t.set_family( prefs['font_family'] )
       t.set_fontname( prefs['font'] )
 
-    formatter_cb( ax )
+    x_formatter_cb( ax )
+    y_formatter_cb( ax )
   
     self.ax = ax
     self.canvas = canvas
@@ -450,6 +457,63 @@ class Graph( object ):
   def draw( self, **kw ):
     pass
 
+class HorizontalGraph( Graph ):
+    
+    def prepare_canvas(self):
+        # First, prepare the canvas to calculate all the necessary parts.
+        super( HorizontalGraph, self ).prepare_canvas()
+        if self.prefs['fixed'] == False:
+            # Then, we re-calculate the heights based on number of labels.
+            labels = getattr( self, 'labels', [] )
+            height = self.ax.get_position()[3]
+            dpi = self.figure.get_dpi()
+            fig_width, fig_height = self.figure.get_size_inches()
+            height_pix = height * fig_height * dpi
+            num_labels = len(labels)
+            pixels_per_label = 2*self.prefs['text_padding'] + self.prefs['text_size']
+            new_height_pix = max(num_labels * pixels_per_label, height_pix)
+            prefs['height'] += new_height_pix - height_pix
+            
+            # After we calculate the new height, prepare the canvas again.
+            super( HorizontalGraph, self ).prepare_canvas()
+
+    def y_formatter_cb(self, ax):
+        # y_vals should be the y-location of the labels.
+        y_vals =  numpy.arange(.5,len(labels)+.5,1)
+
+        # Locations should be fixed.
+        fl = FixedLocator( y_vals )
+        # Make the formatter for the y-axis
+        ff = FixedFormatter( labels )
+        ax.yaxis.set_major_formatter( ff )
+        ax.yaxis.set_major_locator( fl )
+        
+
+    def write_graph(self):
+            # Calculate the spacing of the y-tick labels:
+            height_per = ax.get_position()[-1]
+            height_inches = self.fig.get_size_inches()[-1] * height_per
+            height_pixels = self.fig.get_dpi() * height_inches
+            max_height_labels = height_pixels / max( 1, len(links) )
+
+            # Adjust the font height to match the maximum available height
+            font_height = max_height_labels * 1.7 / 3.0 - 1.0
+            font_height = min( font_height, 7 )
+            setp( ax.get_yticklabels(), size=font_height )
+
+            ax.yaxis.draw( self.canvas.get_renderer() )
+
+            total_xmax = 0
+            for label in ax.get_yticklabels():
+                bbox = label.get_window_extent( self.canvas.get_renderer() )
+                total_xmax = max( bbox.xmax()-bbox.xmin(), total_xmax )
+                move_left = (total_xmax+6) / self.prefs['width']
+
+            pos = ax.get_position()
+            pos[0] = move_left
+            pos[2] = 1 - pos[0] - .02
+            ax.set_position( pos )
+        
 class DBGraph( Graph ):
 
   def setup( self ):
@@ -515,7 +579,6 @@ class PivotGroupGraph( Graph ):
         new_groups[ new_group ] = new_datum
     self.parsed_data = new_parsed_data
 
-
 class PivotGraph( Graph ):
 
   def sort_keys( self, results ):
@@ -562,7 +625,7 @@ class TimeGraph( DBGraph ):
   def parse_group( self, group ):
     return to_timestamp( group )
 
-  def formatter_cb( self, ax ): 
+  def x_formatter_cb( self, ax ): 
     ax.set_xlim( xmin=self.begin_num,xmax=self.end_num )
     dl = common.PrettyDateLocator()
     df = common.PrettyDateFormatter( dl )

@@ -1,7 +1,7 @@
 
 import types, datetime, numpy, math
 from graphtool.tools.common import to_timestamp, expand_string
-from graphtool.graphs.graph import Graph, PivotGraph, PivotGroupGraph, TimeGraph
+from graphtool.graphs.graph import Graph, PivotGraph, PivotGroupGraph, TimeGraph, HorizontalGraph
 from graphtool.graphs.common import pretty_float, statistics
 import matplotlib.cm as cm
 from matplotlib.mlab import linspace
@@ -26,7 +26,6 @@ class BarGraph( PivotGraph ):
       super( BarGraph, self ).setup()
       self.labels = []
       self.colors = []
-
 
   def make_bottom_text(self ):
       units = str(self.metadata.get('column_units','')).strip()
@@ -56,7 +55,6 @@ class BarGraph( PivotGraph ):
       if self.is_timestamps:
           if data_current != None: retval += ", Current: " + pretty_float( data_current ) + " " + units
       return retval
-
 
   def draw( self ):
     results = self.parsed_data
@@ -137,7 +135,7 @@ class BarGraph( PivotGraph ):
               
       return super( BarGraph, self ).parse_pivot( pivot )
 
-  def formatter_cb( self, ax ):
+  def x_formatter_cb( self, ax ):
       if self.string_mode:
           smap = self.string_map
           reverse_smap = {}
@@ -151,9 +149,50 @@ class BarGraph( PivotGraph ):
           ax.set_xlim( xmin=0,xmax=len(ticks) )
       else:
           try:
-              super(StackedBarGraph, self).formatter_cb( self, ax )
+              super(StackedBarGraph, self).x_formatter_cb( self, ax )
           except:
               return None
+
+class HorizontalBarGraph( HorizontalGraph, BarGraph ):
+
+  def draw( self ):
+    results = self.parsed_data
+    if len( results.items() ) == 0:
+      return None
+    keys = self.sort_keys( results )
+    tmp_x = []; tmp_y = []
+
+    width = float(self.width)
+    if self.is_timestamps:
+        #width = (1 - self.bar_graph_space) * width / 86400.0
+        width = width / 86400.0
+        offset = 0
+    elif self.string_mode:
+        width = (1 - self.bar_graph_space) * width
+        offset = self.bar_graph_space / 2.0
+    else:
+        offset = 0
+    for pivot, data in results.items():
+      if self.string_mode:
+          transformed = self.transform_strings( pivot )
+          tmp_x.append( transformed + offset )
+      else:
+        tmp_x.append( pivot + offset )
+      tmp_y.append( float(data) )
+    if self.is_timestamps:
+        tmp_x = [date2num( datetime.datetime.utcfromtimestamp(key) ) for key in tmp_x]
+    self.bars = self.ax.bar( tmp_x, tmp_y, width=width )
+    setp( self.bars, linewidth=0.5 )
+    pivots = keys
+    for idx in range(len(pivots)):
+      self.coords[ pivots[idx] ] = self.bars[idx]
+    if self.string_mode:
+        ymax = max(tmp_y); ymax *= 1.1
+        self.ax.set_xlim( xmin=0, xmax=len(self.string_map.keys()) )
+        self.ax.set_ylim( ymin=0, ymax=ymax )
+    elif self.is_timestamps:
+        self.ax.set_xlim( xmin=min(tmp_x), xmax=max(tmp_x)+width )
+    
 
 class StackedBarGraph( PivotGroupGraph ):
 
@@ -304,7 +343,7 @@ class StackedBarGraph( PivotGroupGraph ):
     self.coords = coords
     return coords
 
-  def formatter_cb( self, ax ):
+  def x_formatter_cb( self, ax ):
       if self.string_mode:
           smap = self.string_map
           reverse_smap = {}
@@ -318,7 +357,7 @@ class StackedBarGraph( PivotGroupGraph ):
           ax.set_xlim( xmin=0,xmax=len(ticks) )
       else:
           try:
-              super(StackedBarGraph, self).formatter_cb( self, ax )
+              super(StackedBarGraph, self).x_formatter_cb( self, ax )
           except:
               return None
      
@@ -719,7 +758,6 @@ class PieGraph( PivotGraph ):
     except:
       return None
 
-# TODO: this is not generic...
 class QualityMap( TimeGraph, PivotGroupGraph ):
 
   sort_keys = Graph.sort_keys
