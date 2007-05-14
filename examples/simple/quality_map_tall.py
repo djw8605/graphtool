@@ -18,13 +18,13 @@ QM = QualityMap()
 
 # Data generation
 full_data = {}
-for i in range(10):
+for i in range(100):
     team_name = 'Team %i' % i
     begin_time, end_time, data = make_time_data()
     full_data[team_name] = data
     
-metadata = {'title':'Quality Plot w.r.t. Time', 'starttime':begin_time, 
-            'endtime':end_time, 'span':span }
-filename = expand_string('$HOME/tmp/quality_map.png',os.environ)
+metadata = {'title':'Tall Quality Plot w.r.t. Time', 'starttime':begin_time, 
+            'endtime':end_time, 'span':span, 'fixed-height':False }
+filename = expand_string('$HOME/tmp/quality_map_tall.png',os.environ)
 file = open( filename, 'w' )
 QM( full_data, file, metadata )

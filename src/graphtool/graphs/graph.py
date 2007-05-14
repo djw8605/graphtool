@@ -5,7 +5,7 @@ import graphtool.graphs.common as common
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.backends.backend_svg import FigureCanvasSVG
 from matplotlib.figure import Figure
-from matplotlib.ticker import FixedLocator
+from matplotlib.ticker import FixedLocator, FixedFormatter
 from matplotlib.backends.backend_svg import RendererSVG
 from matplotlib.patches import Wedge, Shadow, Rectangle, Polygon
 from matplotlib.numerix import Float32
@@ -21,7 +21,7 @@ prefs = {
   'text_size' : 7,    #in pixels
   'text_padding' : 3, #in pixels
   'legend_padding' : .01, # In percent of screen space / 100
-  'figure_padding' : .10,
+  'figure_padding' : 50, #in pixels
   'width' : 800,  #in pixels
   'height' : 500,
   'width_inches' : 8,    # Somewhat arbitrary, as dpi is adjusted to 
@@ -34,6 +34,7 @@ prefs = {
   'font_family' : 'sans-serif',
   'square_axis' : False,
   'watermark' : '$GRAPHTOOL_ROOT/static_content/CMSbwl3.png',
+  'fixed-height' : True
 }
 
 def draw_empty( text, file, kw ):
@@ -266,6 +267,9 @@ class Graph( object ):
     dpi = prefs['width'] / float(prefs['width_inches'])
     height_inches = prefs['height'] / dpi
 
+    # Conversion from pixels to percentage of screen
+    figure_padding_perc = prefs['figure_padding'] / float(prefs['height'])
+
     # Calculations for the legend
     rows = 0.0; column_height = 0.0; bottom = 0.0
     # Max number of rows in the legend
@@ -295,16 +299,16 @@ class Graph( object ):
     # rect = (left, bottom, width, height)
     legend_rect = prefs['legend_padding'], prefs['legend_padding'], legend_width, legend_height
     if prefs['square_axis']:
-      min_size = min( 1 - 1.5*prefs['figure_padding'], 1 - bottom - 2*prefs['figure_padding'] )
+      min_size = min( 1 - 1.5*figure_padding_perc, 1 - bottom - 2*figure_padding_perc )
       ax_rect = (.5 - min_size/2.0*prefs['height']/float(prefs['width']), 
-                 prefs['figure_padding'] + bottom, 
+                 figure_padding_perc + bottom, 
                  prefs['height']/float(prefs['width'])*min_size, 
                  min_size )
     else:
-      ax_rect = (prefs['figure_padding'], 
-                 prefs['figure_padding'] + bottom, 
-                 1 - 1.5*prefs['figure_padding'],
-                 1 - bottom - 2*prefs['figure_padding'])
+      ax_rect = (figure_padding_perc, 
+                 figure_padding_perc + bottom, 
+                 1 - 1.5*figure_padding_perc,
+                 1 - bottom - 2*figure_padding_perc)
 
     # Add a watermark:
     if 'watermark' in prefs.keys() and str(prefs['watermark']) != 'False':
@@ -344,14 +348,16 @@ class Graph( object ):
     # Set text on main axes.
     # Creates a subtitle, if necessary 
     title = title.split('\n',1)
-    if len(title) == 1:
-      ax.set_title( title[0] )
-    else:
-      ax.set_title( title[0] + '\n' )
+    subtitle_height_pix = (prefs['subtitle_size'] + 2*prefs['text_padding']) * (len(title) > 1)
+    ax_height_pix = ax_rect[-1] * height_inches * dpi 
+    print "ax_height_pix", ax_height_pix
+    ax.title = ax.text( 0.5, 1 + (subtitle_height_pix + prefs['text_padding'])/ax_height_pix, title[0],
+                        verticalalignment='bottom', horizontalalignment='center' )
+    if len(title) > 1:
       ax.title.set_transform( ax.transAxes )
       ax.title.set_clip_box( None )
       ax._set_artist_props( ax.title )
-      ax.subtitle = ax.text( 0.5, 1.02, title[1],
+      ax.subtitle = ax.text( 0.5, 1.0 + prefs['text_padding']/ax_height_pix, title[1],
           verticalalignment='bottom',
           horizontalalignment='center' )
       ax.subtitle.set_family( prefs['font_family'] )
@@ -462,23 +468,26 @@ class HorizontalGraph( Graph ):
     def prepare_canvas(self):
         # First, prepare the canvas to calculate all the necessary parts.
         super( HorizontalGraph, self ).prepare_canvas()
-        if self.prefs['fixed'] == False:
+        if self.prefs.get('fixed-height',True) == False:
             # Then, we re-calculate the heights based on number of labels.
             labels = getattr( self, 'labels', [] )
             height = self.ax.get_position()[3]
-            dpi = self.figure.get_dpi()
-            fig_width, fig_height = self.figure.get_size_inches()
+            dpi = self.fig.get_dpi()
+            fig_width, fig_height = self.fig.get_size_inches()
             height_pix = height * fig_height * dpi
             num_labels = len(labels)
             pixels_per_label = 2*self.prefs['text_padding'] + self.prefs['text_size']
-            new_height_pix = max(num_labels * pixels_per_label, height_pix)
-            prefs['height'] += new_height_pix - height_pix
-            
+            print pixels_per_label
+            new_height_pix = max(num_labels * pixels_per_label + 2*self.prefs['figure_padding'], height_pix)
+            self.metadata['height'] = self.prefs['height'] + new_height_pix - height_pix + self.additional_vertical_padding()
+            print self.metadata['height']
+            self.metadata['fixed-height'] = True
             # After we calculate the new height, prepare the canvas again.
             super( HorizontalGraph, self ).prepare_canvas()
 
     def y_formatter_cb(self, ax):
         # y_vals should be the y-location of the labels.
+        labels = getattr( self, 'labels', [] )
         y_vals =  numpy.arange(.5,len(labels)+.5,1)
 
         # Locations should be fixed.
@@ -488,31 +497,38 @@ class HorizontalGraph( Graph ):
         ax.yaxis.set_major_formatter( ff )
         ax.yaxis.set_major_locator( fl )
         
+    def additional_vertical_padding(self): return 0
 
     def write_graph(self):
             # Calculate the spacing of the y-tick labels:
-            height_per = ax.get_position()[-1]
+            labels = getattr( self, 'labels', [] )
+            height_per = self.ax.get_position()[-1]
             height_inches = self.fig.get_size_inches()[-1] * height_per
             height_pixels = self.fig.get_dpi() * height_inches
-            max_height_labels = height_pixels / max( 1, len(links) )
+            print "height_pixels", height_pixels, height_per
+            max_height_labels = height_pixels / max( 1, len(labels) )
+            print max_height_labels
 
             # Adjust the font height to match the maximum available height
             font_height = max_height_labels * 1.7 / 3.0 - 1.0
             font_height = min( font_height, 7 )
-            setp( ax.get_yticklabels(), size=font_height )
+            setp( self.ax.get_yticklabels(), size=font_height )
 
-            ax.yaxis.draw( self.canvas.get_renderer() )
+            self.ax.yaxis.draw( self.canvas.get_renderer() )
 
             total_xmax = 0
-            for label in ax.get_yticklabels():
+            for label in self.ax.get_yticklabels():
                 bbox = label.get_window_extent( self.canvas.get_renderer() )
                 total_xmax = max( bbox.xmax()-bbox.xmin(), total_xmax )
                 move_left = (total_xmax+6) / self.prefs['width']
 
-            pos = ax.get_position()
+            pos = self.ax.get_position()
             pos[0] = move_left
             pos[2] = 1 - pos[0] - .02
-            ax.set_position( pos )
+            self.ax.set_position( pos )
+            
+            # Finally, call normal writer.
+            super( HorizontalGraph, self ).write_graph()
         
 class DBGraph( Graph ):
 

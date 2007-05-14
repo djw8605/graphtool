@@ -758,7 +758,7 @@ class PieGraph( PivotGraph ):
     except:
       return None
 
-class QualityMap( TimeGraph, PivotGroupGraph ):
+class QualityMap( HorizontalGraph, TimeGraph, PivotGroupGraph ):
 
   sort_keys = Graph.sort_keys
 
@@ -870,45 +870,20 @@ class QualityMap( TimeGraph, PivotGroupGraph ):
           t = p.get_transform()
           coords[link][timebin] = p
 
-    y_vals =  numpy.arange(.5,len(links)+.5,1)
-    fl = FixedLocator( y_vals )
-    if self.kind.lower() == "link":
-      links = [ i[0] + ' to ' + i[1] for i in links ]
-
     # Make the colorbar
-    cb = self.fig.colorbar( self.mapper, format="%d%%", orientation='horizontal', fraction=0.04, pad=0.13, aspect=40  )
+    # Calculate padding
+    pad_pix = self.additional_vertical_padding()
+    height_inches = self.fig.get_size_inches()[-1]
+    pad_perc = pad_pix / self.fig.get_dpi() / height_inches / 2.0
+    print "pad perc", pad_perc
+    cb = self.fig.colorbar( self.mapper, format="%d%%", orientation='horizontal', fraction=0.04, pad=pad_perc, aspect=40  )
     setp( cb.outline, linewidth=.5 )
     setp( cb.ax.get_xticklabels(), size=10 )
     setp( cb.ax.get_xticklabels(), family=self.prefs['font_family'] )
     setp( cb.ax.get_xticklabels(), fontname = self.prefs['font'] )
-
-    # Make the formatter for the y-axis
-    ff = FixedFormatter( links )
-    ax.yaxis.set_major_formatter( ff )
-    ax.yaxis.set_major_locator( fl )
-
-    # Calculate the spacing of the y-tick labels:
-    height_per = ax.get_position()[-1]
-    height_inches = self.fig.get_size_inches()[-1] * height_per
-    height_pixels = self.fig.get_dpi() * height_inches
-    max_height_labels = height_pixels / max( 1, len(links) )
-
-    # Adjust the font height to match the maximum available height
-    font_height = max_height_labels * 1.7 / 3.0 - 1.0
-    font_height = min( font_height, 7 )
-    setp( ax.get_yticklabels(), size=font_height )
-
-    ax.yaxis.draw( self.canvas.get_renderer() )
-
-    total_xmax = 0
-    for label in ax.get_yticklabels():
-      bbox = label.get_window_extent( self.canvas.get_renderer() )
-      total_xmax = max( bbox.xmax()-bbox.xmin(), total_xmax )
-    move_left = (total_xmax+6) / self.prefs['width']
-    pos = ax.get_position()
-    pos[0] = move_left
-    pos[2] = 1 - pos[0] - .02
-    ax.set_position( pos )
+    
+  def additional_vertical_padding(self):
+      return 120
 
   def get_coords( self ):
 
