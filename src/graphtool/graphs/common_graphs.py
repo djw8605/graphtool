@@ -108,7 +108,7 @@ class BarGraph( PivotGraph ):
       bar = coords[pivot]
       t = bar.get_transform()
       my_coords = t.seq_xy_tups( bar.get_verts() )
-      coords[ pivot ] = tuple( (i[0],height-i[1]) for i in my_coords )
+      coords[ pivot ] = tuple( [(i[0],height-i[1]) for i in my_coords] )
     return coords
     
   def parse_data(self):
@@ -123,16 +123,11 @@ class BarGraph( PivotGraph ):
     self.next_value = 0
     # Then parse as normal
     super( BarGraph, self ).parse_data()
-
-  def parse_pivot(self, pivot):
-      
-      if self.string_mode:
-          pivot = str(pivot)  
-          # Add string to the hash map
-          self.string_map[pivot] = self.next_value
-          self.next_value += 1
-              
-      return super( BarGraph, self ).parse_pivot( pivot )
+    if self.string_mode:
+        keys = self.sort_keys(self.parsed_data); keys.reverse()
+        for key in keys:
+            self.string_map[key] = self.next_value
+            self.next_value += 1
 
   def x_formatter_cb( self, ax ):
       if self.string_mode:
@@ -353,7 +348,7 @@ class StackedBarGraph( PivotGroupGraph ):
         t = p.get_transform()
         my_coords = t.seq_xy_tups( p.get_verts() )
         height = self.prefs['height']
-        coords[pivot][group] = tuple( (i[0],height-i[1]) for i in my_coords )
+        coords[pivot][group] = tuple( [(i[0],height-i[1]) for i in my_coords] )
     self.coords = coords
     return coords
 
@@ -556,7 +551,7 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
         csum_right += size_right
         my_coords = transform.seq_xy_tups( [(time_begin, bottom_left), (time_begin, csum_left), \
                     (time_end, csum_right), (time_end, bottom_right), (time_begin, bottom_left)] )
-        coords[pivot][timebin] = tuple( (i[0],height-i[1]) for i in my_coords )
+        coords[pivot][timebin] = tuple( [(i[0],height-i[1]) for i in my_coords] )
     timebin = timebins[-1]
     timebin_num = timebins_num[-1]
     csum_left = 0; csum_right = 0
@@ -569,7 +564,7 @@ class CumulativeGraph( TimeGraph, PivotGroupGraph ):
       csum_left += size_left
       my_coords = transform.seq_xy_tups( [(time_begin, bottom_left), (time_begin, csum_left), \
                   (time_end, csum_left), (time_end, bottom_left), (time_begin, bottom_left)] )
-      coords[pivot][timebin] = tuple( (i[0],height-i[1]) for i in my_coords )
+      coords[pivot][timebin] = tuple( [(i[0],height-i[1]) for i in my_coords] )
 
     self.coords = coords
     return coords
@@ -766,7 +761,7 @@ class PieGraph( PivotGraph ):
         v = wedge.get_verts()
         t = wedge.get_transform()
         my_coords = t.seq_xy_tups( v )
-        coords[ orig_label ] = tuple( (i[0],height-i[1]) for i in my_coords )
+        coords[ orig_label ] = tuple( [(i[0],height-i[1]) for i in my_coords] )
       self.coords = coords
       return coords
     except:
@@ -907,7 +902,7 @@ class QualityMap( HorizontalGraph, TimeGraph, PivotGroupGraph ):
       for group, p in groups.items():
         t = p.get_transform()
         my_coords = t.seq_xy_tups( p.get_verts() )
-        coords[pivot][group] = tuple( (i[0],height-i[1]) for i in my_coords )
+        coords[pivot][group] = tuple( [(i[0],height-i[1]) for i in my_coords] )
 
     return coords
 

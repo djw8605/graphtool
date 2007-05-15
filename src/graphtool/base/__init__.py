@@ -1,5 +1,10 @@
 
-import sys, time, threading, os, readline, types
+import sys, time, threading, os, types
+
+try:
+    import readline
+except:
+    pass
 
 class GraphToolInfo(object):
 
