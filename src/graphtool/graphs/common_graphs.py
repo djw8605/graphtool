@@ -196,7 +196,7 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
           ax.set_yticklabels( [reverse_smap[i] for i in ticks] )
           labels = ax.get_yticklabels()
           ax.grid( False )
-          ax.set_ylim( xmin=0,xmax=len(ticks) )
+          ax.set_ylim( ymin=0,ymax=len(ticks) )
       else:
           try:
               super( PivotGraph, self).y_formatter_cb( ax )
