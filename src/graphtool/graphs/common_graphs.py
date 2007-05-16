@@ -176,8 +176,8 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
       self.coords[ pivots[idx] ] = self.bars[idx]
     if self.string_mode:
         ymax = max(tmp_y); ymax *= 1.1
-        self.ax.set_ylim( xmin=0, xmax=len(self.string_map.keys()) )
-        self.ax.set_xlim( ymin=0, ymax=ymax )
+        self.ax.set_ylim( ymin=0, ymax=len(self.string_map.keys()) )
+        self.ax.set_xlim( xmin=0, xmax=ymax )
     
   def x_formatter_cb( self, ax ):
       try:
