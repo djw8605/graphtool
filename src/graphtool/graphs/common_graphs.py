@@ -12,6 +12,12 @@ from matplotlib.cbook import is_string_like
 from matplotlib.colors import normalize
 from pylab import setp
 
+try:
+  set
+except:
+  import sets
+  set = sets.Set
+
 def find_info( attr, kw, metadata, default='' ):
   str_attr = str(attr)
   return kw.get( str_attr, metadata.get( str_attr, default ) )
@@ -728,7 +734,7 @@ class PieGraph( PivotGraph ):
     my_labels = []
     local_labels = list(self.labels); local_labels.reverse()
     for label in local_labels:
-      orig_label = label.rsplit(' ',1)[0]
+      orig_label = label[:label.rfind(' ')]
       val = float(results[orig_label])
       if val / self.amt_sum > self.min_amount:
         my_labels.append( orig_label )
@@ -756,7 +762,8 @@ class PieGraph( PivotGraph ):
       labels = self.labels
       wedges_len = len(wedges)
       for idx in range(wedges_len):
-        orig_label =  labels[idx].rsplit(' ',1)[0]
+        my_label = labels[idx] 
+        orig_label = my_label[:my_label.rfind(' ')]
         wedge = wedges[ wedges_len - idx - 1 ]
         v = wedge.get_verts()
         t = wedge.get_transform()

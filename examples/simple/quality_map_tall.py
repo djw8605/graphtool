@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import time, os, random, datetime
 from matplotlib.dates import num2date
 from graphtool.graphs.common_graphs import QualityMap

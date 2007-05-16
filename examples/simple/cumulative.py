@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import time, os, random, datetime
 from graphtool.graphs.common_graphs import CumulativeGraph
 from graphtool.tools.common import expand_string
