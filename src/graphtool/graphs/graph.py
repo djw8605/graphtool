@@ -246,7 +246,15 @@ class Graph( object ):
     for key in prefs.keys():
       if key in self.metadata.keys():
         my_type = type( prefs[key] )
-        prefs[key] = my_type(self.metadata[key])
+        # bool('false') is true!  That's
+        # why we have to do this override. 
+        if my_type == types.BooleanType:
+          if str(self.metadata[key]).lower().find('f') >= 0:
+            prefs[key] = False
+          else:
+            prefs[key] = True
+        else:
+          prefs[key] = my_type(self.metadata[key])
       if key in kw.keys():
         my_type = type( prefs[key] )
         prefs[key] = my_type(kw[key])    
@@ -498,6 +506,7 @@ class HorizontalGraph( Graph ):
     def additional_vertical_padding(self): return 0
 
     def write_graph(self):
+        if self.ax != None:
             # Calculate the spacing of the y-tick labels:
             labels = getattr( self, 'labels', [] )
             height_per = self.ax.get_position()[-1]
@@ -523,8 +532,8 @@ class HorizontalGraph( Graph ):
             pos[2] = 1 - pos[0] - .02
             self.ax.set_position( pos )
             
-            # Finally, call normal writer.
-            super( HorizontalGraph, self ).write_graph()
+        # Finally, call normal writer.
+        super( HorizontalGraph, self ).write_graph()
         
 class DBGraph( Graph ):
 
@@ -609,7 +618,10 @@ class PivotGraph( Graph ):
       sorted_keys.extend( reverse_dict[key] )
     return sorted_keys
 
-  def data_size( self, item ): return abs(item)
+  def data_size( self, item ):
+    if type(item) == types.TupleType:
+      return abs(item[0])
+    return abs(item)
 
   def parse_pivot( self, pivot ):
     return pivot

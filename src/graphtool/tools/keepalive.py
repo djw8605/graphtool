@@ -81,6 +81,8 @@ class Application( XmlConfig ):
             if self.isalive.execute():
                 logging.warning("Unable to terminate app!  Trying a stronger signal")
                 self.kill.execute()
+        else:
+            logging.info("Application is dead.")
 
 
         logging.info("Starting the application; attempt %i." % attempt)
@@ -148,6 +150,7 @@ def executeCommand(command, timeOut = 1200):
             except:
                 pass 
             aFile = open('script.sh', 'w')
+            command = '#!/bin/bash\n' + command
             aFile.write(command + '\n')
             aFile.close()
             os.chmod('script.sh', 0755)

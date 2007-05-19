@@ -159,7 +159,10 @@ def pretty_float( num ):
   try: floats = int(max(2-max(floor(log(abs(num)+1e-3)/log(10)),0),0))
   except: floats=2
   format = "%." + str(floats) + "f"
-  return format % float(num)
+  if type(num) == types.TupleType:
+    return format % float(num[0])
+  else:
+    return format % float(num)
 
 def statistics( results, span=None, is_timestamp = False ):
     results = dict(results)

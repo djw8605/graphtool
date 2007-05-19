@@ -24,7 +24,7 @@ def find_info( attr, kw, metadata, default='' ):
 
 class BarGraph( PivotGraph ):
 
-  bar_graph_space = .1
+  bar_graph_space = .2
   is_timestamps = False
 
   def setup(self):
@@ -160,7 +160,7 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
     if len( results.items() ) == 0:
       return None
     keys = self.sort_keys( results )
-    tmp_x = []; tmp_y = []
+    tmp_x = []; tmp_y = []; yerr = []
 
     width = float(self.width)
     if self.string_mode:
@@ -173,9 +173,16 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
           transformed = self.transform_strings( pivot )
           tmp_x.append( transformed + offset )
       else:
-        tmp_x.append( pivot + offset )
-      tmp_y.append( float(data) )
-    self.bars = self.ax.barh( tmp_x, tmp_y, height=width )
+          tmp_x.append( pivot + offset )
+      if type(data) == types.TupleType:
+          tmp_y.append( float(data[0]) )
+          yerr.append( float(data[1]) )
+      else:
+          tmp_y.append( float(data) )
+    if len(yerr) != 0:
+        self.bars = self.ax.barh( tmp_x, tmp_y, height=width, xerr=yerr, ecolor='red' )
+    else:
+        self.bars = self.ax.barh( tmp_x, tmp_y, height=width )
     setp( self.bars, linewidth=0.5 )
     pivots = keys
     for idx in range(len(pivots)):
