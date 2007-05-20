@@ -621,7 +621,10 @@ class PivotGraph( Graph ):
   def data_size( self, item ):
     if type(item) == types.TupleType:
       return abs(item[0])
-    return abs(item)
+    try:
+      return abs(item)
+    except TypeError, te:
+      return -1
 
   def parse_pivot( self, pivot ):
     return pivot
@@ -635,7 +638,9 @@ class PivotGraph( Graph ):
     parsed_data = getattr( self, 'parsed_data', self.results )
     for pivot, data in parsed_data.items():
       new_pivot = self.parse_pivot( pivot )
-      new_parsed_data[ new_pivot ] = self.parse_datum( data )
+      data = self.parse_datum( data )
+      if data != None:
+        new_parsed_data[ new_pivot ] = data
     self.parsed_data = new_parsed_data
 
 class TimeGraph( DBGraph ):

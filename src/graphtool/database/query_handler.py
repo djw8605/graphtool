@@ -63,7 +63,11 @@ def add_data( old_data, row, results_cols ):
     elif type(row[results_cols[0]]) == array.array:
       old_data += '\n' + row[results_cols[0]].tostring()
     else:
-      old_data += row[results_cols[0]]
+      new_data = row[results_cols[0]]
+      if new_data == None or old_data == None:
+        old_data = None
+      else:
+        old_data += row[results_cols[0]]
   return old_data
 
 def new_data( row, results_cols, len_results_cols=None ):
