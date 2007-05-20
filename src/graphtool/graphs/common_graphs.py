@@ -216,6 +216,74 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
           except:
               return None
 
+class QualityBarGraph( HorizontalBarGraph ):
+    
+    def setup(self):
+        super(QualityBarGraph,self).setup()
+        
+        # Setup the colormapper to get the right colors
+        norms = normalize(0,100)
+        mapper = cm.ScalarMappable( cmap=cm.RdYlGn, norm=norms )
+        A = linspace(0,100,100)
+        mapper.set_array(A)
+        self.mapper = mapper
+
+    def draw( self ):
+        results = self.parsed_data
+        if len( results.items() ) == 0:
+          return None
+        keys = self.sort_keys( results )
+        tmp_x = []; tmp_y = []; yerr = []; color = []
+    
+        width = float(self.width)
+        if self.string_mode:
+            width = (1 - self.bar_graph_space) * width
+            offset = self.bar_graph_space / 2.0
+        else:
+            offset = 0
+        for pivot, data in results.items():
+          if self.string_mode:
+              transformed = self.transform_strings( pivot )
+              tmp_x.append( transformed + offset )
+          else:
+              tmp_x.append( pivot + offset )
+          if type(data) == types.TupleType:
+              value = float(data[0])
+              yerr.append( float(data[1]) )
+          else:
+              value = float(data)    
+          tmp_y.append( value )
+          color.append( self.mapper.to_rgba( value*100 ) )
+          
+        if len(yerr) != 0:
+            self.bars = self.ax.barh( tmp_x, tmp_y, height=width, xerr=yerr, ecolor='red', color=color )
+        else:
+            self.bars = self.ax.barh( tmp_x, tmp_y, height=width, color=color )
+            
+        setp( self.bars, linewidth=0.5 )
+        pivots = keys
+        for idx in range(len(pivots)):
+          self.coords[ pivots[idx] ] = self.bars[idx]
+        if self.string_mode:
+            ymax = max(tmp_y); ymax *= 1.1
+            self.ax.set_ylim( ymin=0, ymax=len(self.string_map.keys()) )
+            self.ax.set_xlim( xmin=0, xmax=ymax )
+
+        # Make the colorbar
+        # Calculate padding
+        pad_pix = self.additional_vertical_padding()
+        height_inches = self.fig.get_size_inches()[-1]
+        pad_perc = pad_pix / self.fig.get_dpi() / height_inches / 2.0
+        cb = self.fig.colorbar( self.mapper, format="%d%%", orientation='horizontal', fraction=0.04, pad=pad_perc, aspect=40  )
+        setp( cb.outline, linewidth=.5 )
+        setp( cb.ax.get_xticklabels(), size=10 )
+        setp( cb.ax.get_xticklabels(), family=self.prefs['font_family'] )
+        setp( cb.ax.get_xticklabels(), fontname = self.prefs['font'] )
+        
+    def additional_vertical_padding(self):
+        return 120
+
+    
 class StackedBarGraph( PivotGroupGraph ):
 
   is_timestamps = False
