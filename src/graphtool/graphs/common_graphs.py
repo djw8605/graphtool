@@ -168,7 +168,9 @@ class HorizontalBarGraph( HorizontalGraph, BarGraph ):
         offset = self.bar_graph_space / 2.0
     else:
         offset = 0
-    for pivot, data in results.items():
+    keys = self.sort_keys( results )
+    for pivot in keys:
+      data = results[pivot]
       if self.string_mode:
           transformed = self.transform_strings( pivot )
           tmp_x.append( transformed + offset )
@@ -220,13 +222,17 @@ class QualityBarGraph( HorizontalBarGraph ):
     
     def setup(self):
         super(QualityBarGraph,self).setup()
-        
+        results = getattr(self,'parsed_results',self.results)
+
         # Setup the colormapper to get the right colors
         norms = normalize(0,100)
         mapper = cm.ScalarMappable( cmap=cm.RdYlGn, norm=norms )
         A = linspace(0,100,100)
         mapper.set_array(A)
         self.mapper = mapper
+
+        # Kill the xlabel / ylabel
+        self.xlabel = ''; self.ylabel = ''
 
     def draw( self ):
         results = self.parsed_data
@@ -241,24 +247,18 @@ class QualityBarGraph( HorizontalBarGraph ):
             offset = self.bar_graph_space / 2.0
         else:
             offset = 0
-        for pivot, data in results.items():
-          if self.string_mode:
-              transformed = self.transform_strings( pivot )
-              tmp_x.append( transformed + offset )
-          else:
-              tmp_x.append( pivot + offset )
-          if type(data) == types.TupleType:
-              value = float(data[0])
-              yerr.append( float(data[1]) )
-          else:
-              value = float(data)    
-          tmp_y.append( value )
-          color.append( self.mapper.to_rgba( value*100 ) )
-          
-        if len(yerr) != 0:
-            self.bars = self.ax.barh( tmp_x, tmp_y, height=width, xerr=yerr, ecolor='red', color=color )
-        else:
-            self.bars = self.ax.barh( tmp_x, tmp_y, height=width, color=color )
+        keys = self.sort_keys( results )
+        for pivot in keys:
+          data = results[pivot]
+          if data != None:
+            color.append( self.mapper.to_rgba( data ) )
+            tmp_y.append( data )
+            if self.string_mode:
+                transformed = self.transform_strings( pivot )
+                tmp_x.append( transformed + offset )
+            else:
+                tmp_x.append( pivot + offset )
+        self.bars = self.ax.barh( tmp_x, tmp_y, height=width, color=color )
             
         setp( self.bars, linewidth=0.5 )
         pivots = keys
@@ -283,6 +283,48 @@ class QualityBarGraph( HorizontalBarGraph ):
     def additional_vertical_padding(self):
         return 120
 
+    def parse_data( self ):
+        self.multi_column = False
+        self.two_column = False
+        self.percentages = False
+
+        results = self.results
+        # Determine the columns to use; deprecated.
+        if 'done_column' in self.metadata:
+            self.done_column = int( self.metadata.get('done_column',1) )
+            self.fail_column = int( self.metadata.get('fail_column',2) )
+            self.multi_column = True
+        else:
+            # See if the values are tuples.
+            found_data = False
+            for key, val in results.items():
+                found_data = True
+                first_data = val
+            if type(first_data) == types.TupleType or type(found_data) == types.ListType:
+                assert len(first_data) == 2
+                self.two_column = True
+            else:
+                self.percentages = True
+        return super( QualityBarGraph, self ).parse_data( )
+
+    def parse_datum( self, data ):
+        if self.multi_column or self.two_column:
+          if self.multi_column:
+              try:
+                  attempted, done, fail = data[try_column], data[done_column], data[fail_column]
+              except Exception, e:
+                  done = 0; fail = 0;
+          if self.two_column:
+              done, fail = data
+          if float(done) > 0:
+            value = done / float( fail + done )
+          elif float(done) > 0 or float(fail) > 0:
+            value = 0.0
+        elif self.percentages:
+            value = data
+        if value != None: 
+            return float(value)*100
+        return None
     
 class StackedBarGraph( PivotGroupGraph ):
 
@@ -877,8 +919,8 @@ class QualityMap( HorizontalGraph, TimeGraph, PivotGroupGraph ):
                 first_data = data
                 break
             if found_data: break
-        if type(found_data) == types.TupleType or type(found_data) == types.ListType:
-            assert len(found_data) == 2
+        if type(first_data) == types.TupleType or type(found_data) == types.ListType:
+            assert len(first_data) == 2
             self.two_column = True
         else:
             self.percentages = True

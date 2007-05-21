@@ -471,8 +471,13 @@ class Graph( object ):
     pass
 
 class HorizontalGraph( Graph ):
-    
+
     def prepare_canvas(self):
+        # Fix xlabel / ylabel as the axis is switched.
+        tmp = getattr(self,'ylabel','')
+        self.ylabel = getattr(self,'xlabel','')
+        self.xlabel = tmp
+
         # First, prepare the canvas to calculate all the necessary parts.
         super( HorizontalGraph, self ).prepare_canvas()
         if self.prefs.get('fixed-height',True) == False:
