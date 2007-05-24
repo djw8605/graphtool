@@ -22,6 +22,18 @@ try:
 except Exception, e:
   sqlite_present = False
 
+try:
+    # By default, try PyGreSql
+    import pgdb as postgres
+    postgres_present = True
+except:
+    # Then switch to psycopg
+    try:
+        import psycopg as postgres
+        postgres_present = True
+    except:
+        postgres_present = False
+
 db_classes = { \
                  'Oracle':'OracleDatabase',
                  'MySQL' :'MySqlDatabase',
@@ -301,6 +313,75 @@ class MySqlDatabase( DBConnection ):
     finally:
       self.release_cursor( curs )
     return results
+
+class PostgresDatabase( DBConnection ):
+
+  def __init__( self, *args, **kw ):
+    super( MySqlDatabase, self ).__init__( *args, **kw )
+    if postgres_present:
+      self.module = postgres
+    else:
+      raise Exception( "Postgres python module did not load correctly." )
+    self.cursors = {}
+
+  def make_connection( self ):
+    kw = {}
+    info = self.info
+    assignments = {'host':'Host', 'user':'AuthDBUsername',
+                   'passwd':'AuthDBPassword', 'db':'Database',
+                   'port':'Port' }
+    for key in assignments.keys():
+      if assignments[key] in info.keys():
+        kw[key] = info[ assignments[key] ]
+        if key == 'port':
+          kw[key] = int(kw[key])
+    conn = self.module.connect( **kw )
+    curs = conn.cursor() 
+    #curs.execute( "set time_zone='+00:00'" )
+    curs.close() 
+    return conn
+
+  def get_connection( self ):
+      conn = self.make_connection()
+      return conn
+
+  def get_cursor( self ):
+    conn = self.get_connection()
+    curs = conn.cursor()
+    self.cursors[ curs ] = conn
+    return curs
+
+  def release_cursor( self, curs ):
+    curs.close()
+    self.release_connection( self.cursors[ curs ] )
+    
+  def release_connection( self, conn ):
+      conn.close()
+      
+  def _execute_statement( self, sql_string, sql_vars ):
+    my_string = str( sql_string )
+    placement_dict = {}
+    for var_name in sql_vars.keys():
+      var_string = ':' + var_name
+      placement = my_string.find( var_string )
+      var_string_len = len(var_string)
+      while placement >= 0:
+        placement_dict[placement] = var_name
+        my_string = my_string[:placement] + '%s' + my_string[placement+var_string_len:]
+        placement = my_string.find( var_string )
+    places = placement_dict.keys(); places.sort()
+    my_tuple = ()
+    for place in places:
+      my_tuple += (sql_vars[placement_dict[place]],)
+    curs = self.get_cursor()
+    try:
+      curs.arraysize = 500
+      curs.execute( my_string, my_tuple )
+      results = curs.fetchall()
+    finally:
+      self.release_cursor( curs )
+    return results
+
 
 class SqliteDatabase( DBConnection ):
 
