@@ -85,4 +85,28 @@ class Cache( object ):
     del self.progress[ hash_str ]
     self.progress_lock.release()
 
+  def cached_function(self, function, args, kwargs):
+        hash_str = self.make_hash_str( graphName, args, **kwargs )
 
+        graphing_lock = self.check_and_add_progress( hash_str )
+    
+        if graphing_lock:
+            graphing_lock.acquire()
+            results = self.check_cache( hash_str )
+            graphing_lock.release()
+            return results
+        else:
+            results =  self.check_cache( hash_str )
+        if results:
+            self.remove_progress( hash_str )
+            return results
+        try:
+            results = function(*args, **kwargs)
+        except Exception, e:
+            self.remove_progress( hash_str )
+            st = cStringIO.StringIO()
+            traceback.print_exc( file=st )
+            raise Exception( "Error in creating graph, hash_str:%s\n%s\n%s" % (hash_str, str(e), st.getvalue()) )
+        self.add_cache( hash_str, (graph_results, file.getvalue()) )
+        self.remove_progress( hash_str )
+        return results
