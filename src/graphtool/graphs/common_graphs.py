@@ -1,7 +1,7 @@
 
 import types, datetime, numpy, math
 from graphtool.tools.common import to_timestamp, expand_string
-from graphtool.graphs.graph import Graph, PivotGraph, PivotGroupGraph, TimeGraph, HorizontalGraph
+from graphtool.graphs.graph import Graph, PivotGraph, PivotGroupGraph, TimeGraph, HorizontalGraph, draw_empty
 from graphtool.graphs.common import pretty_float, statistics
 import matplotlib.cm as cm
 from matplotlib.mlab import linspace
@@ -900,6 +900,7 @@ class QualityMap( HorizontalGraph, TimeGraph, PivotGroupGraph ):
     super( QualityMap, self ).setup()
 
     results = self.parsed_data
+    self.xlabel = ''; self.ylabel = ''
     
     self.multi_column = False
     self.two_column = False
@@ -919,11 +920,15 @@ class QualityMap( HorizontalGraph, TimeGraph, PivotGroupGraph ):
                 first_data = data
                 break
             if found_data: break
-        if type(first_data) == types.TupleType or type(found_data) == types.ListType:
-            assert len(first_data) == 2
-            self.two_column = True
+        if found_data:
+            if type(first_data) == types.TupleType or type(found_data) == types.ListType:
+                assert len(first_data) == 2
+                self.two_column = True
+            else:
+                self.percentages = True
         else:
-            self.percentages = True
+            # No data
+            return
 
     # Rearrange our data
     timebins = set()

@@ -685,13 +685,13 @@ class TimeGraph( DBGraph ):
         interval = self.metadata['given_kw']['span']
     else:
         interval = self.time_interval( )
-    if interval == 3600:
+    if interval >= 3600 and interval < 86400:
       format_str = '%Y-%m-%d %H:%M'
       format_name = 'Hours'
-    elif interval == 86400:
+    elif interval >= 86400 and interal < 86400*7:
       format_str = '%Y-%m-%d'
       format_name = 'Days'
-    elif interval == 86400*7:
+    elif interval >= 86400*7:
       format_str = '%Y/%U'
       format_name = 'Weeks'
     else:

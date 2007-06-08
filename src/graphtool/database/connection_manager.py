@@ -37,7 +37,8 @@ except:
 db_classes = { \
                  'Oracle':'OracleDatabase',
                  'MySQL' :'MySqlDatabase',
-                 'sqlite' :'SqliteDatabase'
+                 'sqlite' :'SqliteDatabase',
+                 'Postgres' : 'PostgresDatabase'
              }
 
 class ConnectionManager( XmlConfig ):
@@ -317,7 +318,7 @@ class MySqlDatabase( DBConnection ):
 class PostgresDatabase( DBConnection ):
 
   def __init__( self, *args, **kw ):
-    super( MySqlDatabase, self ).__init__( *args, **kw )
+    super( PostgresDatabase, self ).__init__( *args, **kw )
     if postgres_present:
       self.module = postgres
     else:
@@ -328,7 +329,7 @@ class PostgresDatabase( DBConnection ):
     kw = {}
     info = self.info
     assignments = {'host':'Host', 'user':'AuthDBUsername',
-                   'passwd':'AuthDBPassword', 'db':'Database',
+                   'password':'AuthDBPassword', 'database':'Database',
                    'port':'Port' }
     for key in assignments.keys():
       if assignments[key] in info.keys():
