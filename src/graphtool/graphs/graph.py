@@ -688,7 +688,7 @@ class TimeGraph( DBGraph ):
     if interval >= 3600 and interval < 86400:
       format_str = '%Y-%m-%d %H:%M'
       format_name = 'Hours'
-    elif interval >= 86400 and interal < 86400*7:
+    elif interval >= 86400 and interval < 86400*7:
       format_str = '%Y-%m-%d'
       format_name = 'Days'
     elif interval >= 86400*7:
