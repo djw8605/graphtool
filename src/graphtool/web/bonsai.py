@@ -71,7 +71,6 @@ class ImageMapWriter:
             group_name = metadata.get('group_name', 'Grouping')
             group_info = '<b>%s:</b> %s <br/>' % (group_name, group)
         else: group_info = ''
-        # TODO: Finish
         # Process Column Names
         column_names = metadata.get('column_names','')
         column_names_dict = {}
@@ -120,9 +119,10 @@ class GraphMixIn(Cache):
         def grapher():
             data_generator, graphClass, metadata = self.lookupGraph(graphName)
             graph, coords = self._generate_graph(graphName, graphClass, metadata, data_generator, args)
-            
-            #TODO: find out base URL
-            baseUrl = self.context.CmdLineArgs().opts.baseUrl + str(graphName)
+            if hasattr(self, 'context'):
+                baseUrl = self.context.CmdLineArgs().opts.baseUrl + 'graph/' + str(graphName)
+            else:
+                baseUrl = '/graph/' + str(graphName)
             url = baseUrl + '?' + urllib.urlencode(args)
             im = ImageMap()
             output = im(url, data, coords, metadata)
