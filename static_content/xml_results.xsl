@@ -29,9 +29,14 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:template match="/graphtool/query">
   <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
+      <xsl:variable name="static_base_url" select="attr[@name='static_base_url']" />
       <title> Results of Query: <xsl:value-of select="title"/> </title>
-      <link rel="stylesheet" href="/static/content/style.css" type="text/css" />
-      <script type="text/javascript" src="/static/content/wz_tooltip.js" />
+      <link rel="stylesheet" href="/static/content/style.css" type="text/css">
+        <xsl:attribute name="href"> <xsl:value-of select="$static_base_url"/>/style.css </xsl:attribute>
+      </link>
+      <script type="text/javascript" src="/static/content/wz_tooltip.js">
+        <xsl:attribute name="src"> <xsl:value-of select="$static_base_url"/>/wz_tooltip.js </xsl:attribute>
+      </script>
       <script type="text/javascript">
           function toggleBox( divId, state ) {
             var obj = document.getElementById( divId ).style;
@@ -54,7 +59,9 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
       </script>
     </head>
     <body onLoad="tt_Init();">
-      <xsl:call-template name="navtree"/>
+      <xsl:call-template name="navtree">
+          <xsl:with-param name="base_url" select="attr[@name='base_url']" />
+      </xsl:call-template>
       <xsl:choose>
         <xsl:when test="graph">
           <xsl:if test="data/@coords">
@@ -67,7 +74,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
               <xsl:for-each select="data/*">
                 <xsl:variable name="my_pivot">
                 <xsl:choose>
-                  <xsl:when test="$pivot_name='Link'"> <xsl:value-of select="@from" /> to <xsl:value-of select="@to" /> </xsl:when>
+                  <xsl:when test="$pivot_name='Link_false'"> <xsl:value-of select="@from" /> to <xsl:value-of select="@to" /> </xsl:when>
                   <xsl:otherwise>
                     <xsl:value-of select="@name" />
                   </xsl:otherwise>
@@ -131,6 +138,9 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
         <input type="submit" value="Query again"/>
       </form>
 
+      <xsl:variable name="csv_url" select="concat(translate(attr[@name='base_url'], 'xml', 'csv'), '/', @name, '?', substring-after(url, '?'))"/>
+      <a href="{$csv_url}">Download results in CSV format</a>
+
       <div id="metadata_button" class="test" style="visibility:visible;">
         <a href="#" onClick="toggleBox('metadata',1); toggleBox('metadata_button',0); return false;">Show metadata</a>
       </div>
@@ -192,7 +202,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
             <xsl:for-each select="data/*"> 
               <xsl:variable name="my_pivot">
                 <xsl:choose>
-                  <xsl:when test="$pivot_name='Link'">
+                  <xsl:when test="$pivot_name='Link_false'">
                       <xsl:value-of select="@from" />
                       to
                       <xsl:value-of select="@to" />
@@ -223,7 +233,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
             <xsl:for-each select="data/*">
               <xsl:variable name="my_pivot">
                 <xsl:choose>
-                  <xsl:when test="$pivot_name='Link'">
+                  <xsl:when test="$pivot_name='Link_false'">
                       <xsl:value-of select="@from" />
                       to
                       <xsl:value-of select="@to" />
@@ -284,9 +294,8 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 </xsl:template>
 
 <xsl:template name="navtree">
-
-  <!--<xsl:variable name="top" select="document('/xml')/graphtool/pagelist" />-->
-  <xsl:for-each select="document('/xml')/graphtool/pagelist">
+  <xsl:param name="base_url" />
+  <xsl:for-each select="document($base_url)/graphtool/pagelist">
 
     <!--<div class="menu" onClick="toggleBoxSwitch('navmenu',2);" onMouseOver="toggleBoxSwitch('navmenu',1);" onMouseOut="toggleBoxSwitch('navmenu',0)"> -->
     <div class="menu">

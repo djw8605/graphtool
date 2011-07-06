@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-import ez_setup
-ez_setup.use_setuptools()
-
-from setuptools import setup, find_packages
+#from setuptools import setup, find_packages
+#from setuptools import find_packages
+from distutils.core import setup
 
 setup(
     name = "graphtool",
@@ -11,8 +10,9 @@ setup(
     description = "CMS Common Graphing Package.",
     author = "Brian Bockelman",
     author_email = "bbockelm@math.unl.edu",
+    packages = ['graphtool', 'graphtool.utilities', 'graphtool.tools', 'graphtool.base', 'graphtool.web', 'graphtool.graphs', 'graphtool.database', 'graphtool.static_content', 'graphtool.xml'],
     package_dir = {'graphtool.static_content': 'static_content', 'graphtool': 'src/graphtool'},
-    packages = find_packages('src') + ["graphtool.static_content"],
+    package_data = {"graphtool.static_content":['*']},
     include_package_data = True,
     zip_safe = False,
 
@@ -33,5 +33,4 @@ setup(
         ]
     },
  
-    #package_data = {"graphtool_static_content":["*"], "graphtool_example":["*"]}
 )
