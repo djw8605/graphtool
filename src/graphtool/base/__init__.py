@@ -1,5 +1,9 @@
 
-import sys, time, threading, os, types
+import os
+import sys
+import time
+import types
+import threading
 
 try:
     import readline
@@ -30,10 +34,10 @@ class GraphToolInfo(object):
     else:
         setattr( self, kw_name, args.pop( kw_name ) )
 
-  def __getattr__( self, name ):
-    print "\nDid not pass option %s!" % name
-    print "Try adding '-%s=<some value>' to your arguments\n" % name
-    raise AttributeError( "%s not found" % name )
+  #def __getattr__( self, name ):
+  #  print "\nDid not pass option %s!" % name
+  #  print "Try adding '-%s=<some value>' to your arguments\n" % name
+  #  raise AttributeError( "%s not found" % name )
 
   def find_classes( self, must_be_executable=True ):
     my_classes = {}

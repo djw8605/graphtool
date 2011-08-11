@@ -18,7 +18,10 @@ class XmlConfig( GraphToolInfo ):
       self.parse_file()
 
   def parse_dom( self ):
-    self.parse_attributes( self, self.dom )
+    self.parse_attributes(self, self.dom)
+    obj = getattr(self, 'metadata', {})
+    self.parse_attributes(obj, self.dom)
+    self.metadata = obj
 
   def parse_attributes( self, obj, dom ):
     is_dict = isinstance( obj, types.DictType )
@@ -81,7 +84,23 @@ class XmlConfig( GraphToolInfo ):
         traceback.print_exc( file=st )
         raise Exception( "Error in parsing file %s:\n%s\n%s" % (file, str(e), st.getvalue()) )
     module_name = dom.getAttribute('module')
-    if module_name != '':
+    data_file = dom.getAttribute('data_file')
+    if data_file != '' and module_name != '':
+      try:
+        pkg_resources = __import__('pkg_resources')
+      except ImportError, ie:
+        raise Exception("File %s tried to import a data file, which requires" \
+            " the setuptools package.  The import failed; is it installed?" % \
+                file)
+      filename = pkg_resources.resource_filename(module_name, data_file)
+      try:
+          XmlConfig(file=filename)
+      except Exception, e:
+          st = cStringIO.StringIO()
+          traceback.print_exc( file=st )
+          raise Exception("Error in parsing file %s:\n%s\n%s" % \
+              (filename, str(e), st.getvalue()))
+    elif module_name != '':
       text_node = dom.firstChild
       module = import_module( module_name )
       if text_node != None and text_node.nodeType == text_node.TEXT_NODE: 
@@ -106,6 +125,7 @@ class XmlConfig( GraphToolInfo ):
     except:
       raise  Exception("Could not load class %s.  Was it imported?" % class_name)
     self.globals[objname] = my_class( dom=dom )
+    self.globals[objname].name = objname
 
 def attributes_to_dict( attribute_dom ):
   attrs = {}

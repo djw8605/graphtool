@@ -1,4 +1,9 @@
-import time, datetime, calendar, types, math
+
+import math
+import time
+import types
+import datetime
+import calendar
 
 def parseOpts( args ):
   # Stupid python 2.2 on SLC3 doesn't have optparser...
@@ -42,7 +47,7 @@ def convert_to_datetime( string ):
         else:
           results = eval(str(string),{'__builtins__':None,'time':time,'math':math},{})
         if type(results) == types.FloatType or type(results) == types.IntType:
-          results = datetime.datetime.utcfromtimestamp( results )
+          results = datetime.datetime.utcfromtimestamp( int(results) )
         elif type(results) == datetime.datetime:
           pass
         else:
@@ -50,21 +55,23 @@ def convert_to_datetime( string ):
       except Exception, e:
         t = None
         for dateformat in datestrings:
-          try:
-            t = time.strptime( string, dateformat )
-            timestamp = calendar.timegm( t ) #-time.timezone
-            results = datetime.datetime.utcfromtimestamp( timestamp )
-            break
-          except:
-            pass
+            try:
+                t = time.strptime(string, dateformat)
+                timestamp = calendar.timegm(t) #-time.timezone
+                results = datetime.datetime.utcfromtimestamp(timestamp)
+                break
+            except:
+                pass
         if t == None:
-          try:
-            string = string.rsplit('.',1)[0]
-            t = time.strptime( string, dateformat )
-            timestamp = calendar.timegm( t ) #-time.timezone
-            results = datetime.datetime.utcfromtimestamp( timestamp )
-          except:
-            raise ValueError("Unable to create time from string!\nExpecting format of: '12/06/06 12:54:67'\nRecieved:%s" % orig_string)
+            try:
+                string = string.split('.', 1)[0]
+                t = time.strptime(string, dateformat)
+                timestamp = calendar.timegm(t) #-time.timezone
+                results = datetime.datetime.utcfromtimestamp(timestamp)
+            except:
+                raise
+                raise ValueError("Unable to create time from string!\nExpecting " \
+                    "format of: '12/06/06 12:54:67'\nRecieved:%s" % orig_string)
       return results
 
 def to_timestamp( val ):

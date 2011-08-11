@@ -6,29 +6,32 @@ from graphtool.graphs.graph import TimeGraph
 from graphtool.tools.cache import Cache
 from xml.sax.saxutils import XMLGenerator
 import urllib, types
-
+from cherrypy import expose
 try:
     import cStringIO as StringIO
 except:
     import StringIO
 
-# Done to make sure we don't execute arbitrary classes...
-usable_classes = [PieGraph, BarGraph, StackedBarGraph, CumulativeGraph, \
-                  HorizontalBarGraph, QualityBarGraph, QualityMap, TimeBarGraph, \
-                  TimeStackedBarGraph]
 
 class TimeBarGraph( TimeGraph, BarGraph ):
     pass
     
 class TimeStackedBarGraph( TimeGraph, StackedBarGraph ):
     pass
+
+# Done to make sure we don't execute arbitrary classes...
+usable_classes = [PieGraph, BarGraph, StackedBarGraph, CumulativeGraph, \
+                  HorizontalBarGraph, QualityBarGraph, QualityMap, TimeBarGraph, \
+                  TimeStackedBarGraph]
+
+
     
     
 class ImageMapWriter:
     
     def __call__(self, url, data, coords, metadata):
         file = StringIO.StringIO()
-        gen = XMLGenerator( output, 'UTF-8' )
+        gen = XMLGenerator( file, 'UTF-8' )
         gen.startDocument()
         gen.startElement('img', {'usemap':'#map', 'src':str(url)})
         gen.endElement('img')
@@ -43,7 +46,7 @@ class ImageMapWriter:
             if isinstance(groupings, types.DictType):
                 is_pivot_group = True; break
         gen.startElement('map',{'name':'map'})
-        if is_pivot_graph:
+        if is_pivot_group:
             for pivot, groupings in data.items():
                 # If there is no coordinates for this pivot, 
                 # immediately go to the next pivot.
@@ -59,12 +62,13 @@ class ImageMapWriter:
                 if not pivot in coords:
                     continue
                 self.writeArea(gen, datum, coords[pivot], pivot, metadata)
-        self.writeMap( gen, coords )
-        gen.endElement('map')   
+        #self.writeMap( gen, coords )
+		gen.endElement('map')
+            
         
     def writeArea(self, gen, data, data_coords, pivot, metadata, group=None):
-        info = {href:"#", shape:"poly", onClick:"return false;"}
-        info['coords'] = str(data_coords)[1:-1]
+        info = {"href":"#", "shape":"poly", "onClick":"return false;"}
+        info['coords'] = str(data_coords)[1:-1].replace('(', '').replace(')','')
         pivot_name = metadata.get('pivot_name', 'Pivot')
         pivot_info = '<b>%s:</b> %s <br/>' % (pivot_name, pivot)
         if group != None:
@@ -84,7 +88,7 @@ class ImageMapWriter:
             data_info += str(data[i])
             if i in column_units_dict: data_info += str(column_units_dict[i])
         
-        info['onMouseOver'] = "return escape('%s %s %s')" % (pivot_info, group_info, data_info)
+        info['onMouseOver'] = "return escape('%s %s %s');" % (pivot_info, group_info, data_info)
         gen.startElement('area',info)        
         gen.endElement('area')
     
@@ -98,9 +102,36 @@ class GraphMixIn(Cache):
     _graph_registry = {}
     
     def __init__(self, *args, **kw):
-        self.cache = True
         super(GraphMixIn, self).__init__(args, kw)
-    
+        self.use_cache = True
+        self.mounted_url = None #cant set here as controller may not be inited yet
+
+    def getBaseUrl(self):
+        """
+        Find where the context is mounted
+        """
+        
+        # if cached return
+        if self.mounted_url is not None:
+            return self.mounted_url
+        
+        temp_url = ''
+
+        # first check command line for where server mounted
+        if self.context.CmdLineArgs().opts.baseUrl:
+            temp_url = "%s%s" % (temp_url, self.context.CmdLineArgs().opts.baseUrl)
+
+        #look to see if mounted with baseUrl param to DeclaePlugin 
+        if hasattr(self, 'context'):
+            for plugin in self.context.PluginManager().plugins():
+                if plugin.name.endswith(self.__class__.__name__) and \
+                                            plugin.options.has_key('baseUrl'):
+                    temp_url = "%s%s" % (temp_url, plugin.options['baseUrl'])
+                    
+        # set cached value and return
+        self.mounted_url = temp_url
+        return self.mounted_url
+        
     def data_generator(self, func):
         _data_generators[func.func_name] = func
         return func
@@ -118,37 +149,36 @@ class GraphMixIn(Cache):
     def includeGraph(self, graphName, args={}):
         def grapher():
             data_generator, graphClass, metadata = self.lookupGraph(graphName)
-            graph, coords = self._generate_graph(graphName, graphClass, metadata, data_generator, args)
-            if hasattr(self, 'context'):
-                baseUrl = self.context.CmdLineArgs().opts.baseUrl + 'graph/' + str(graphName)
-            else:
-                baseUrl = '/graph/' + str(graphName)
-            url = baseUrl + '?' + urllib.urlencode(args)
-            im = ImageMap()
+            graph, coords, data = self._generate_graph(graphName, graphClass, metadata, data_generator, args)
+            url = self.getBaseUrl() + '/graph/' + str(graphName) + '?' + urllib.urlencode(args)
+            im = ImageMapWriter()
             output = im(url, data, coords, metadata)
             return output
         return grapher
-        
-    @expose
+
     def graph(self, graphName, **args):
         #TODO: Wrap with better error handling
         data_generator, graphClass, metadata = self.lookupGraph(graphName)
-        graph, coords = self._generate_graph(graphName, graphClass, metadata, data_generator, args)
+        graph, coords, data = self._generate_graph(graphName, graphClass, metadata, data_generator, args)
         return graph
+    graph = expose( graph )
 
-    def _generate_graph(self, *args, **kw ):
-        if self.cache:
+    def _generate_graph(self, *args, **kw):
+        if self.use_cache:
             return self.cached_function( self._generate_uncached_graph, args, kw )
         else:
-            return _generate_uncached_graph( *args, **kw )
+            return self._generate_uncached_graph( *args, **kw )
 
     def _generate_uncached_graph(self, graphName, graphClass, metadata, data_generator, args):
-        my_class = self._usable_classes[graphClass]
+        if graphClass in self._usable_classes:
+          my_class = graphClass
+        else:
+          my_class = None    
         my_instance = my_class()
         data = data_generator(args)
         file = StringIO.StringIO()
         coords = my_instance( data, file, metadata )
-        return file.getvalue(), coords
+        return file.getvalue(), coords, data
         
     def make_hash_str(self, function, args, **kwargs ):
         graphName = args[0]
@@ -157,5 +187,4 @@ class GraphMixIn(Cache):
         std_hash_str = super(GraphMixIn, self).make_hash_str(graphName, **args)
         extd_hash_str = super(GraphMixIn, self).make_hash_str(graphName, **metadata)
         return std_hash_str + extd_hash_str
-        
         

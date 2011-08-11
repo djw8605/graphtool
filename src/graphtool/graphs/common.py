@@ -4,6 +4,15 @@ from matplotlib.dates import AutoDateLocator, AutoDateFormatter, DateFormatter, 
 from matplotlib.ticker import ScalarFormatter
 from dateutil.relativedelta import relativedelta
 
+def comma_format(x_orig):
+    x = float(x_orig)
+    if x >= 1000:
+        after_comma = x % 1000
+        before_comma = int(x) / 1000 
+        return '%s,%03g' % (comma_format(before_comma), after_comma)
+    else:
+        return str(x_orig)
+
 class PrettyScalarFormatter( ScalarFormatter ):
 
     def _set_orderOfMagnitude(self,range):
@@ -18,10 +27,14 @@ class PrettyScalarFormatter( ScalarFormatter ):
             else: oom = math.floor(math.log10(val))
         if oom <= -7:
             self.orderOfMagnitude = oom
-        elif oom >= 7:
+        elif oom >= 9:
             self.orderOfMagnitude = oom
         else:
             self.orderOfMagnitude = 0
+            
+    def pprint_val(self, x):
+        pstring = ScalarFormatter.pprint_val(self, x)
+        return comma_format(pstring)
 
 class PrettyDateFormatter( AutoDateFormatter ):
     """ This class provides a formatter which conforms to the
@@ -151,18 +164,30 @@ class PrettyDateLocator( AutoDateLocator ):
         
         locator = RRuleLocator(rrule, self.tz)
         
-        locator.set_view_interval(self.viewInterval)
-        locator.set_data_interval(self.dataInterval)
+        locator.set_axis(self.axis)
+        locator.set_view_interval(*self.axis.get_view_interval())
+        locator.set_data_interval(*self.axis.get_data_interval())
+
         return locator
 
 def pretty_float( num ):
-  try: floats = int(max(2-max(floor(log(abs(num)+1e-3)/log(10)),0),0))
-  except: floats=2
-  format = "%." + str(floats) + "f"
-  if type(num) == types.TupleType:
-    return format % float(num[0])
-  else:
-    return format % float(num)
+
+    if num > 1000:
+        return comma_format(int(num))
+
+    try:
+        floats = int(max(2-max(floor(log(abs(num)+1e-3)/log(10)),0),0))
+    except:
+        floats=2
+    format = "%." + str(floats) + "f"
+    if type(num) == types.TupleType:
+        return format % float(num[0])
+    else:
+        try:
+            retval = format % float(num)
+        except:
+            raise Exception("Unable to convert %s into a float." % (str(num)))
+        return retval
 
 def statistics( results, span=None, is_timestamp = False ):
     results = dict(results)

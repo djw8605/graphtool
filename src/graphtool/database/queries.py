@@ -1,9 +1,16 @@
 
-import types, cStringIO, datetime, calendar, time, threading
+import types, cStringIO, datetime, calendar, time, threading, datetime
 from graphtool.base.xml_config import XmlConfig, import_module
 from graphtool.database import DatabaseInfoV2
 from graphtool.tools.common import convert_to_datetime, to_timestamp
 
+# See if we can use the multiprocessing module in order to offload the CPU
+# heavy results parsing to another process
+has_multiprocessing = True
+try:
+    import multiprocessing
+except:
+    has_multiprocessing = False
 
 class SqlQueries( DatabaseInfoV2 ):
 
@@ -27,12 +34,17 @@ class SqlQueries( DatabaseInfoV2 ):
       self.parse_transform( transform )
 
   def parse_agg( self, agg_dom ):
-    for conn_dom in agg_dom.getElementsByTagName('connection'):
-      textNode = conn_dom.firstChild
-      assert textNode.nodeType == textNode.TEXT_NODE 
-      name = str(textNode.data).strip()
-      if self.metadata.get('agg',None) == None: self.metadata['agg'] = [ name ]
-      else: self.metadata['agg'].append( name )
+        if agg_dom.getAttribute('all').lower() == 'true':
+            self.metadata['agg'] = self.connection_manager.list_connection_names()
+            return
+        for conn_dom in agg_dom.getElementsByTagName('connection'):
+            textNode = conn_dom.firstChild
+            assert textNode.nodeType == textNode.TEXT_NODE 
+            name = str(textNode.data).strip()
+            if self.metadata.get('agg',None) == None:
+                self.metadata['agg'] = [ name ]
+            else:
+                self.metadata['agg'].append( name )
 
   def parse_query( self, query_dom ):
     query_class_name = query_dom.getAttribute('class')
@@ -56,9 +68,14 @@ class SqlQuery( XmlConfig ):
   def __init__( self, query_dom, sqlQueries ):
     self.queries_obj = sqlQueries
     super( SqlQuery, self ).__init__( dom=query_dom )
+    self.__unicode__ = self.__str__
 
   def __call__( self, *args, **kw ):
     return self.query( *args, **kw )
+
+  def __str__(self):
+    return "Queries object:%s\nQuery %s\nSQL:%s" % (self.queries_obj.name, \
+        self.metadata['name'], self.metadata['sql'])
 
   def parse_dom( self ):
     super( SqlQuery, self ).parse_dom()
@@ -121,9 +138,13 @@ class SqlQuery( XmlConfig ):
           sem.acquire()
           sem_count += 1
       vars['globals'] = self.globals 
-      results, metadata = function( results, **vars )
+      if has_multiprocessing and len(results) > 5000:
+          results, metadata = self.do_multiprocess(function, results, vars)
+      else:
+          results, metadata = function(results, **vars)
       for kw, val in self.metadata.items():
-        if kw not in metadata: metadata[kw] = val 
+          if kw not in metadata:
+              metadata[kw] = val 
       metadata['query'] = self 
       metadata['given_kw'] = inputs.filter( my_kw )
       metadata['sql_vars'] = sql_vars
@@ -133,6 +154,29 @@ class SqlQuery( XmlConfig ):
     self.metadata['agg'] = agg
     self.metadata['inputs'] = inputs
     return query
+
+  def _do_multiprocess_child(self, q, function, results, vars):
+      try:
+          t = time.time()
+          print "in sqlqueries multiprocess child"
+          results, metadata = function(results, **vars)
+          print "in sqlqueries multiprocess child: finished processing in %.2f " \
+              "seconds." % (time.time()-t)
+          q.put((results, metadata))
+      except:
+          q.put(None)
+          raise
+
+  def do_multiprocess(self, function, results, vars):
+      q = multiprocessing.Queue()
+      p = multiprocessing.Process(target=self._do_multiprocess_child,
+          args=(q, function, results, vars),
+          name="GraphTool Query Processor")
+      p.daemon = True
+      p.start()
+      results, metadata = q.get()
+      p.join()
+      return results, metadata
 
   def make_query_chain( self, sql_string, old_query, inputs_dom, query_dom ):
     results_dom = query_dom.getElementsByTagName('results')
@@ -315,6 +359,16 @@ class Inputs( XmlConfig ):
       return convert_to_datetime( string )
     elif my_type == 'timestamp':
       return to_timestamp( string )
+    elif my_type == 'bool' or my_type == 'boolean':
+        if type(string) != types.StringType:
+            return bool(string)
+        if string.lower().strip() == 'false':
+            return False
+        elif string.lower().strip() == 'true':
+            return True
+        else:
+            raise TypeError("Cannot convert string %s to boolean; valid "
+                      "inputs are 'true' or 'false'." % string )
     else:
       return str( string )
 
@@ -323,6 +377,8 @@ class Inputs( XmlConfig ):
     inputs = {}
     inputs_types = {}
     inputs_kind = {}
+    partial_up = []
+    partial_down = []
 
     if len(inputs_dom) > 0:
       inputs_dom = inputs_dom[0]
@@ -343,6 +399,10 @@ class Inputs( XmlConfig ):
         inputs_types[varname] = input.getAttribute('type')
       else: 
         inputs_types[varname] = None
+      if input.getAttribute('partial').lower() == 'down':
+        partial_down.append(varname)
+      if input.getAttribute('partial').lower() == 'up':
+        partial_up.append(varname)
       input_kind = input.getAttribute('kind')
       if input_kind != None and len( input_kind ) > 0:
         inputs_kind[varname] = input_kind
@@ -350,6 +410,8 @@ class Inputs( XmlConfig ):
     self.inputs = inputs
     self.kind = inputs_kind
     self.types = inputs_types
+    self.partial_up = partial_up
+    self.partial_down = partial_down
 
   def get_sql_kw( self ):
     inputs_kind = self.kind; inputs = self.inputs
@@ -380,6 +442,32 @@ class Inputs( XmlConfig ):
     for attr in kw.keys():
       if attr in inputs_types.keys() and inputs_types[attr] != None:
         kw[attr] = self.parse_type( kw[attr], inputs_types[attr] )
+
+    for attr in self.partial_down:
+        prev_time = kw[attr]
+        assert isinstance(prev_time, datetime.datetime)
+        if 'span' not in kw:
+            continue
+        span = kw['span']
+        if span == 3600:
+            kw[attr] = datetime.datetime(prev_time.year, prev_time.month,
+                prev_time.day, prev_time.hour, 0, 0)
+        if span >= 86400:
+            kw[attr] = datetime.datetime(prev_time.year, prev_time.month, 
+                prev_time.day, 0, 0, 0)
+
+    for attr in self.partial_up:
+        prev_time = kw[attr]
+        assert isinstance(prev_time, datetime.datetime)
+        if 'span' not in kw:
+            continue
+        span = kw['span']
+        if span == 3600:
+            kw[attr] = datetime.datetime(prev_time.year, prev_time.month, 
+                prev_time.day, prev_time.hour, 59, 59)
+        if span >= 86400:
+            kw[attr] = datetime.datetime(prev_time.year, prev_time.month,
+                prev_time.day, 23, 59, 59)
 
     if isinstance( self.parentInputs, Inputs ):
       kw = self.parentInputs.filter( kw )

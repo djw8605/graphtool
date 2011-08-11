@@ -4,9 +4,41 @@ from graphtool.tools.common import expand_string, to_timestamp
 from xml.sax.saxutils import XMLGenerator
 import types, cStringIO, datetime, traceback, sys
 
+# See if we can use the multiprocessing module in order to offload the CPU
+# heavy graph generations to another process.
+
+# TODO: Turning off multiprocessing for now; it causes the graph to be
+# generated twice because the cache of the temporary subprocess gets filled,
+# not the parent process.
+has_multiprocessing = False
+try:
+    import multiprocessing
+except:
+    has_multiprocessing = False
+
 class XmlGenerator( QueryHandler ):
 
-  def handle_results( self, results, metadata, **kw ):
+  XSLT_NAME='xml_results.xsl'
+
+  def _do_multiprocess_child(self, q, results, metadata, kw):
+    try:
+      xml = self.handle_results_internal(results, metadata, **kw)
+      q.put(xml)
+    except:
+      q.put(None)
+      raise
+
+  def do_multiprocess(self, results, metadata, **kw):
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(target=self._do_multiprocess_child,
+      args=(q, results, metadata, kw), name="GraphTool XmlGenerator")
+    p.daemon = True
+    p.start()
+    xml = q.get()
+    p.join()
+    return xml
+
+  def handle_results_internal( self, results, metadata, **kw ):
     output = cStringIO.StringIO()
     gen = self.startPlot( output, results, metadata )
     kind = metadata.get('kind','Type not specified!')
@@ -21,12 +53,18 @@ class XmlGenerator( QueryHandler ):
     self.endPlot( gen )
     return output.getvalue()
 
+  def handle_results(self, results, metadata, **kw):
+    if has_multiprocessing:
+      return self.do_multiprocess(results, metadata, **kw)
+    else:
+      return self.handle_results_internal(results, metadata, **kw)
+
   def handle_list( self, *args, **kw ):
     output = cStringIO.StringIO()
     gen = self.startDocument( output )
     base_url = ''
-    if 'base_url' in self.__dict__:
-      base_url = self.base_url
+    if 'base_url' in self.metadata:
+      base_url = self.metadata['base_url']
       if base_url[-1] != '/':
         base_url += '/'
     i = 0
@@ -43,6 +81,8 @@ class XmlGenerator( QueryHandler ):
         my_page = self.known_commands[page]
         if 'title' in my_page.__dict__.keys():
           attrs['title'] = my_page.title
+        else:
+          attrs['title'] = page
         gen.startElement('page',attrs)
         gen.characters( base_url + page )
         gen.endElement('page')
@@ -55,7 +95,15 @@ class XmlGenerator( QueryHandler ):
   def startDocument( self, output, encoding='UTF-8' ):
     gen =  XMLGenerator( output, encoding )
     gen.startDocument()
-    output.write('<?xml-stylesheet type="text/xsl" href="/static/content/xml_results.xsl"?>\n')
+    try:
+        static_location = '/static/content'
+        static_object = self.globals['static']
+        static_location = static_object.metadata.get('base_url','/static')
+        static_location += '/content'
+    except:
+        pass
+    output.write('<?xml-stylesheet type="text/xsl" href="%s/%s"?>\n' % \
+        (static_location, self.XSLT_NAME) )
     output.write('<!DOCTYPE graphtool-data>\n')
     gen.startElement('graphtool',{})
     gen.characters("\n\t")
@@ -101,7 +149,24 @@ class XmlGenerator( QueryHandler ):
       else:
         print "Graphs not specified"
       pass 
+    my_base_url = self.metadata.get('base_url','')
+    gen.startElement( 'attr',{'name':'base_url'} )
+    gen.characters( my_base_url )
+    gen.endElement( 'attr' )
+    gen.characters('\n\t\t')
+    try:
+        static_location = '/static/content'
+        static_object = self.globals['static']
+        static_location = static_object.metadata.get('base_url','/static')
+        static_location += '/content'
+    except:
+        pass
+    gen.startElement( 'attr',{'name':'static_base_url'} )
+    gen.characters( static_location )
+    gen.endElement( 'attr' )
+    gen.characters('\n\t\t')
     self.write_graph_url( results, metadata, gen, base_url=base_url )
+    gen.characters('\n\t\t')
     return gen
 
   def write_graph_url( self, results, metadata, gen, base_url=None ):
@@ -260,7 +325,7 @@ class XmlGenerator( QueryHandler ):
 
   def groupingAttrs( self, grouping_name, grouping ):
     grouping_attrs = {}
-    if grouping_name and grouping_name.lower()=='time':
+    if grouping_name and str(grouping_name).lower()=='time':
       grouping_attrs['value'] = str(datetime.datetime.utcfromtimestamp(to_timestamp(grouping)))
     else:
       grouping_attrs['value'] = str(grouping)
@@ -268,10 +333,10 @@ class XmlGenerator( QueryHandler ):
 
   #TODO: make this more generic!  Built in change for Phedex link.
   def pivotName( self, pivot, attrs ):
-    if attrs['pivot'] == 'Link':
-      return 'link', {'from':pivot[0],'to':pivot[1]}
-    else:
-      return 'pivot',{'name':str(pivot)}
+    #if attrs['pivot'] == 'Link':
+    #  return 'link', {'from':pivot[0],'to':pivot[1]}
+    #else:
+       return 'pivot',{'name':str(pivot)}
 
   def addData( self, data, gen, coords=None, **kw ):
         if type(data) != types.TupleType:
@@ -290,4 +355,8 @@ class XmlGenerator( QueryHandler ):
           gen.characters( str(datum) )
           gen.endElement( 'd' )
         gen.characters("\n\t\t\t\t")
+
+class XmlGeneratorAlt(XmlGenerator):
+
+    XSLT_NAME='web_layout.xsl'
 

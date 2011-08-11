@@ -1,4 +1,4 @@
-import time, popen2, sys, os, logging, re
+import time, popen2, sys, os, logging, re, signal
 
 from graphtool.base.xml_config import XmlConfig
 from logging.handlers import RotatingFileHandler
