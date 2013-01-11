@@ -34,9 +34,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
       <link rel="stylesheet" href="/static/content/style.css" type="text/css">
         <xsl:attribute name="href"> <xsl:value-of select="$static_base_url"/>/style.css </xsl:attribute>
       </link>
-      <script type="text/javascript" src="/static/content/wz_tooltip.js">
-        <xsl:attribute name="src"> <xsl:value-of select="$static_base_url"/>/wz_tooltip.js </xsl:attribute>
-      </script>
+
       <script type="text/javascript">
           function toggleBox( divId, state ) {
             var obj = document.getElementById( divId ).style;
@@ -58,7 +56,13 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
           function testAlert( arg ) { alert( arg ); }
       </script>
     </head>
-    <body onLoad="tt_Init();">
+    <body>
+<xsl:variable name="static_base_url2" select="attr[@name='static_base_url']" />
+      <script type="text/javascript" src="/static/content/wz_tooltip.js">
+        <xsl:attribute name="src"> <xsl:value-of select="$static_base_url2"/>/wz_tooltip.js </xsl:attribute>
+      </script>
+
+
       <xsl:call-template name="navtree">
           <xsl:with-param name="base_url" select="attr[@name='base_url']" />
       </xsl:call-template>
