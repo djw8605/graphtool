@@ -767,7 +767,7 @@ class Graph( object ):
             svg = False
         canvas.draw() # **kw )
         if svg:
-            renderer = RendererSVG(prefs[width], prefs[height], file)
+            renderer = RendererSVG(prefs['width'], prefs['height'], file)
             canvas.figure.draw(renderer)
             renderer.finalize()
         else:
