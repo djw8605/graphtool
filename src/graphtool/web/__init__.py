@@ -137,10 +137,19 @@ class WebHost( XmlConfig ):
 class StaticContent( XmlConfig ):
 
     _cp_config = {} 
-
+    _directory_paths={}
     def index( self ):
-        return "No index here!"
+        return "No index here...!"
     index.exposed = True
+
+    @cherrypy.expose
+    def default(self, *args):
+        try:
+            abspath=self._directory_paths[cherrypy.request.wsgi_environ['SCRIPT_NAME']]
+        except:
+            abspath="/"
+        file = os.path.join(abspath,*args)
+        return cherrypy.lib.static.serve_file(file)
 
     def parse_dom( self ):
         super( StaticContent, self ).parse_dom()
@@ -165,14 +174,7 @@ class StaticContent( XmlConfig ):
                 continue
             dir_name = str(directory_name_dom.data).strip()
             dir_name = self.expand_path(dir_name)
-            if location != '':
-                handler = cherrypy.tools.staticdir.handler(section=name, \
-                    dir=dir_name, root=os.getcwd(), location=location)
-            else:
-                handler = cherrypy.tools.staticdir.handler(section=name, \
-                    dir=dir_name, root=os.getcwd())
-            setattr(handler, 'location', location)
-            setattr(self, name, handler)
+            self._directory_paths[location]=dir_name
 
 
 class StaticModule(object):

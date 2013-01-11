@@ -21,6 +21,7 @@ import types
 import os
 #import gc
 import logging
+import math
 
 log = logging.getLogger("GraphTool.Graph")
 
@@ -1351,7 +1352,8 @@ class TimeGraph( DBGraph ):
             time_slice = 1
 
         begin_tuple = time.gmtime(begin); end_tuple = time.gmtime(end)
-        added_title = '\n%i %s from ' % (int((end-begin)/time_slice), format_name)
+        added_title = '\n%i %s from ' % (math.ceil(float(self.end-self.begin)/float(time_slice)), format_name)
+        #added_title = '\n%i %s from ' % (int((end-begin)/time_slice), format_name)
         added_title += time.strftime('%s to' % format_str, begin_tuple)
         if time_slice < 86400:
             add_utc = ' UTC'
