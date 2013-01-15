@@ -1,0 +1,19 @@
+%changelog
+* Fri Jan 11 2013 Ashu Guru <aguru2@unl.edu>
+- Moving spec file to upstream
+
+* Wed Jan 09 2013 Ashu Guru <aguru2@unl.edu>
+- Fixing the problem of static sites
+
+* Tue Oct 02 2012 Ashu Guru <aguru2@unl.edu>
+- Fixing xsl for safari and Chrome
+
+* Mon May 31 2012 Ashu Guru <aguru2@unl.edu>
+- Updated for fixing the number of bins and days of bar chart report issue
+- (https://jira.opensciencegrid.org/browse/GRATIAWEB-17)
+
+* Mon Apr 9 2012 Ashu Guru <aguru2@unl.edu>
+- Updated the javascript code for resolving the IE dropdown incompatability
+- (http://jira.opensciencegrid.org/browse/GRATIAWEB-14)
+
+
